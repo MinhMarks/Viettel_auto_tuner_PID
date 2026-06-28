@@ -1,0 +1,51 @@
+Tên chủ đề : Tự động tinh chỉnh tham số cho bộ điều khiển phức tạp bằng tối ưu hóa thông minh
+Bài toán của đơn vị (nêu sự cần thiết phải nghiên cứu) : Nghiên cứu thiết kế hệ thống điện tử
+hàng không
+Mô tả : "Trong các hệ thống điều khiển hiện đại, đặc biệt là các hệ có động học phức tạp 
+như máy bay, trực thăng, UAV, robot hoặc các cơ cấu chấp hành nhiều vòng lặp, việc lựa chọn 
+và tinh chỉnh tham số bộ điều khiển là một công việc quan trọng nhưng tốn nhiều thời gian. 
+Các bộ điều khiển thực tế thường gồm nhiều hệ số liên quan đến vòng điều khiển tốc độ, góc, 
+vị trí, bộ lọc tín hiệu, giới hạn cơ cấu chấp hành hoặc cơ chế bù nhiễu. Khi số lượng tham số
+tăng lên, phương pháp chỉnh tay truyền thống trở nên khó khăn, phụ thuộc nhiều vào kinh nghiệm và
+khó đạt được cấu hình tối ưu.
+Đề tài này hướng tới việc xây dựng một hệ thống tự động tinh chỉnh tham số điều khiển dựa trên 
+mô phỏng. TTS sẽ nghiên cứu cách kết nối thuật toán tối ưu với mô hình hệ thống để tự động 
+thử nghiệm nhiều bộ tham số khác nhau, đánh giá chất lượng đáp ứng và tìm ra cấu hình phù hợp
+nhất. Các hướng tiếp cận có thể bao gồm Bayesian Optimization, Genetic Algorithm, Particle Swarm 
+Optimization hoặc các phương pháp tìm kiếm hiện đại khác.
+Đề tài không yêu cầu áp dụng trên hệ thống bay thực tế. Trọng tâm là xây dựng quy trình tuning 
+tự động, thiết kế hàm mục tiêu hợp lý và đánh giá hiệu quả so với phương pháp chỉnh tay."
+Các bước thực hiện : 
+"TTS lựa chọn một mô hình điều khiển có độ phức tạp vừa phải, ví dụ hệ điều khiển attitude/rate 
+cho UAV, điều khiển vị trí động cơ servo, hệ thống cân bằng hai bánh hoặc mô hình trực thăng 
+đơn giản trong MATLAB/Simulink hoặc Python.
+Trên mô hình đã chọn, TTS xác định nhóm tham số cần tối ưu, chẳng hạn như các hệ số PID, 
+trọng số bộ điều khiển tối ưu, tham số bộ lọc hoặc bảng gain scheduling đơn giản.
+Sau đó, TTS xây dựng thuật toán tự động tuning, trong đó mỗi bộ tham số sẽ được đưa vào mô hình 
+mô phỏng để đánh giá theo các chỉ tiêu như thời gian đáp ứng, độ quá điều chỉnh, sai số xác lập, 
+mức sử dụng cơ cấu chấp hành và độ bền vững trước nhiễu.
+Trong quá trình thực hiện, TTS cần thử nghiệm và so sánh nhiều phương pháp tuning khác nhau, 
+đồng thời phân tích ưu nhược điểm của từng phương pháp về tốc độ hội tụ, chất lượng nghiệm 
+tìm được và chi phí tính toán."
+Yêu cầu đầu ra : 
+TTS cần xây dựng một bộ kịch bản kiểm thử gồm nhiều điều kiện hoạt động khác nhau như tín 
+hiệu đặt bước, nhiễu đầu vào, thay đổi tải hoặc thay đổi tham số mô hình để đánh giá tính bền
+vững của bộ điều khiển sau tuning.
+Kết quả cần được báo cáo thông qua các chỉ số định lượng như thời gian tăng, thời gian 
+xác lập, độ quá điều chỉnh, sai số xác lập và năng lượng điều khiển. 
+Đồng thời cần so sánh hiệu quả giữa bộ tham số được chỉnh thủ công và bộ tham số do thuật toán
+tự động tìm ra.
+Về sản phẩm minh họa, TTS cần xây dựng giao diện chạy thử hoặc script demo cho phép người dùng
+nhập tham số bài toán, chạy quá trình tuning và quan sát đồ thị đáp ứng của hệ thống trước 
+và sau tối ưu.
+Kết thúc đề tài, TTS bàn giao một poster trình bày phương pháp tiếp cận và kết quả đạt được, 
+một báo cáo kỹ thuật dài khoảng 15-20 trang, cùng toàn bộ mã nguồn và hướng dẫn sử dụng hệ 
+thống."
+Tài liệu tham khảo :
+"K. Ogata, Modern Control Engineering
+G. F. Franklin, J. D. Powell, Feedback Control of Dynamic Systems
+K. J. Åström, T. Hägglund, PID Controllers: Theory, Design, and Tuning
+J. Kennedy, R. Eberhart, “Particle Swarm Optimization”
+J. Snoek et al., “Practical Bayesian Optimization of Machine Learning Algorithms”
+Search keyword: “PID tuning using Bayesian Optimization”
+Search keyword: “Automatic controller tuning for nonlinear systems”

@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mô Hình Hóa Hệ Quanser 2DOF Helicopter</title>
+
+  <!-- MathJax -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        tags: 'ams',
+        packages: {'[+]': ['boldsymbol']}
+      },
+      options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] },
+      startup: { ready() { MathJax.startup.defaultReady(); } }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+
+  <style>
+    /* ── Google Font ── */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --bg2:       #161b27;
+      --bg3:       #1e2535;
+      --border:    #2d3550;
+      --accent:    #5b8dee;
+      --accent2:   #7c5cfc;
+      --gold:      #f4c542;
+      --green:     #3ecf8e;
+      --red:       #f46a6a;
+      --text:      #e2e8f0;
+      --muted:     #8892a4;
+      --radius:    10px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      font-size: 15px;
+    }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 28px 80px;
+    }
+
+    /* ── Hero Header ── */
+    .hero {
+      background: linear-gradient(135deg, #0d1b3e 0%, #1a0a3b 50%, #0d1b3e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 60px 28px 50px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 30% 50%, rgba(91,141,238,.15) 0%, transparent 60%),
+                  radial-gradient(ellipse at 70% 50%, rgba(124,92,252,.12) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(91,141,238,.15);
+      border: 1px solid rgba(91,141,238,.35);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(24px, 4vw, 38px);
+      font-weight: 700;
+      background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 60%, #7c5cfc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.25;
+      margin-bottom: 16px;
+    }
+    .hero-sub {
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 600px;
+      margin: 0 auto 24px;
+    }
+    .hero-tags {
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    }
+    .hero-tag {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    /* ── TOC ── */
+    .toc {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin: 36px 0;
+    }
+    .toc h3 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      margin-bottom: 14px;
+    }
+    .toc ol { padding-left: 20px; }
+    .toc li { margin: 5px 0; }
+    .toc a { color: var(--text); text-decoration: none; font-size: 14px; transition: color .2s; }
+    .toc a:hover { color: var(--accent); }
+    .toc .sub { margin-left: 18px; margin-top: 3px; }
+    .toc .sub li { font-size: 13px; color: var(--muted); }
+
+    /* ── Section headings ── */
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 56px 0 18px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+    h2::before {
+      content: '';
+      display: block;
+      width: 40px; height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 2px;
+      margin-bottom: 10px;
+    }
+    h3 {
+      font-size: 17px; font-weight: 600;
+      color: #c0ccdf;
+      margin: 32px 0 12px;
+    }
+    h4 {
+      font-size: 14px; font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin: 22px 0 8px;
+    }
+
+    /* ── Paragraph ── */
+    p { margin: 10px 0; color: #ccd3e0; }
+
+    /* ── Method cards ── */
+    .method-intro {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin: 20px 0;
+    }
+    .method-num {
+      flex-shrink: 0;
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      font-size: 16px; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+    }
+    .method-intro p { margin: 4px 0; font-size: 14px; }
+    .method-intro strong { color: var(--text); }
+
+    /* ── Callout boxes ── */
+    .callout {
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 14px;
+      border-left: 3px solid;
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .callout.note   { background: rgba(91,141,238,.08);  border-color: var(--accent);  }
+    .callout.tip    { background: rgba(62,207,142,.08);  border-color: var(--green);   }
+    .callout.warn   { background: rgba(244,197,66,.08);  border-color: var(--gold);    }
+    .callout.danger { background: rgba(244,106,106,.08); border-color: var(--red);     }
+    .callout p { margin: 2px 0; color: inherit; }
+    .callout.note   p { color: #a8c0f8; }
+    .callout.tip    p { color: #7edcb5; }
+    .callout.warn   p { color: #f0d580; }
+    .callout.danger p { color: #f4a0a0; }
+
+    /* ── Math blocks ── */
+    .math-block {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 24px;
+      margin: 18px 0;
+      overflow-x: auto;
+      text-align: center;
+    }
+    .math-block.highlight {
+      border-color: var(--accent);
+      background: rgba(91,141,238,.06);
+    }
+    .math-block.result {
+      border-color: var(--green);
+      background: rgba(62,207,142,.06);
+    }
+    .math-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; margin: 20px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead tr { background: var(--bg3); }
+    th {
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid rgba(45,53,80,.6);
+      color: #c8d3e0;
+    }
+    tbody tr:hover { background: rgba(91,141,238,.04); }
+    td code, th code {
+      background: var(--bg3);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+
+    /* ── Code blocks ── */
+    pre {
+      background: #0a0e18;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      overflow-x: auto;
+      margin: 18px 0;
+    }
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #a9b8d0;
+    }
+    pre code { color: #a9b8d0; }
+    .kw  { color: #7c5cfc; }
+    .fn  { color: #5b8dee; }
+    .st  { color: #3ecf8e; }
+    .cm  { color: #4e5a72; font-style: italic; }
+    .nu  { color: #f4c542; }
+
+    /* ── ASCII diagram ── */
+    .ascii {
+      background: #0a0e18;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--accent);
+      white-space: pre;
+      overflow-x: auto;
+      margin: 16px 0;
+    }
+
+    /* ── Summary box ── */
+    .summary-box {
+      background: linear-gradient(135deg, rgba(91,141,238,.08) 0%, rgba(124,92,252,.08) 100%);
+      border: 1px solid rgba(91,141,238,.3);
+      border-radius: var(--radius);
+      padding: 22px 26px;
+      margin: 24px 0;
+    }
+    .summary-box h4 { color: var(--accent); margin: 0 0 10px; font-size: 13px; }
+
+    /* ── Comparison grid ── */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .compare-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+    }
+    .compare-card h4 { margin: 0 0 8px; font-size: 13px; }
+    .compare-card ul { padding-left: 16px; font-size: 13px; color: var(--muted); }
+    .compare-card li { margin: 3px 0; }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 48px 0;
+    }
+
+    /* ── References ── */
+    .ref-list { list-style: none; padding: 0; }
+    .ref-list li {
+      padding: 8px 0 8px 28px;
+      border-bottom: 1px solid rgba(45,53,80,.4);
+      font-size: 13px;
+      color: var(--muted);
+      position: relative;
+    }
+    .ref-list li::before {
+      content: counter(ref-counter) '.';
+      counter-increment: ref-counter;
+      position: absolute; left: 0;
+      color: var(--accent); font-weight: 600;
+    }
+    .ref-list { counter-reset: ref-counter; }
+    .ref-list li em { color: var(--text); font-style: normal; }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      padding: 32px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Print / PDF ── */
+    @media print {
+      body { background: #fff; color: #111; font-size: 12pt; }
+      .hero { background: #1a1a2e !important; }
+      .math-block, pre, .ascii, .callout, .summary-box, .compare-card {
+        break-inside: avoid;
+      }
+      h2, h3 { break-after: avoid; }
+      .container { max-width: 100%; padding: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<div class="hero">
+  <div class="hero-badge">Kỹ Thuật Điều Khiển &amp; Mô Hình Hóa</div>
+  <h1>Mô Hình Hóa Hệ Thống<br>Quanser 2DOF Helicopter</h1>
+  <p class="hero-sub">Tổng quan toàn diện 6 phương pháp: từ ý tưởng chung đến phương trình vi phân cụ thể</p>
+  <div class="hero-tags">
+    <span class="hero-tag">Newton-Euler</span>
+    <span class="hero-tag">Euler-Lagrange</span>
+    <span class="hero-tag">Hamiltonian</span>
+    <span class="hero-tag">Kane's Equations</span>
+    <span class="hero-tag">Gauss's Principle</span>
+    <span class="hero-tag">Data-Driven Modeling</span>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<div class="container">
+
+  <!-- TOC -->
+  <div class="toc">
+    <h3>📋 Mục Lục</h3>
+    <ol>
+      <li><a href="#s1">Giới Thiệu Hệ Thống</a></li>
+      <li><a href="#s2">1.1 Newton-Euler</a></li>
+      <li><a href="#s3">1.2 Euler-Lagrange</a></li>
+      <li><a href="#s4">1.3 Hamiltonian Mechanics</a></li>
+      <li><a href="#s5">1.4 Kane's Equations</a></li>
+      <li><a href="#s6">1.5 Gauss's Principle of Least Constraint</a></li>
+      <li><a href="#s7">1.6 Black-box Data-Driven Modeling</a></li>
+      <li><a href="#s8">So Sánh Tổng Hợp</a></li>
+      <li><a href="#refs">Tài Liệu Tham Khảo</a></li>
+    </ol>
+  </div>
+
+  <!-- ─────────────────── §1 INTRO ─────────────────── -->
+  <h2 id="s1">1. Giới Thiệu Hệ Thống</h2>
+
+  <h3>1.1 Mô Tả Vật Lý</h3>
+  <p>Hệ <strong>Quanser 2DOF Helicopter</strong> là thiết bị thí nghiệm điều khiển với hai bậc tự do:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Bậc tự do</th><th>Ký hiệu</th><th>Mô tả</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Pitch</strong></td><td>$\epsilon$</td><td>Góc ngẩng — mũi máy bay lên/xuống</td></tr>
+        <tr><td><strong>Travel</strong></td><td>$\lambda$</td><td>Góc quay ngang trong mặt phẳng nằm ngang</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="ascii">              [Front Motor]
+                    |
+  ←──[Travel Arm]──*──[Body Pivot]──→
+                    |
+              [Back Motor]
+                    |
+           [Counterweight]
+                    |
+               [Base Pillar]</div>
+
+  <p>Hệ có <strong>2 động cơ DC</strong>. Chuyển động <em>Pitch</em> điều khiển bởi <strong>hiệu</strong> lực nâng; chuyển động <em>Travel</em> điều khiển bởi <strong>tổng</strong> lực nâng.</p>
+
+  <h3>1.2 Thông Số Hệ Thống</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Ký hiệu</th><th>Đại lượng</th><th>Đơn vị</th></tr></thead>
+      <tbody>
+        <tr><td>$m_f,\,m_b$</td><td>Khối lượng motor trước/sau</td><td>kg</td></tr>
+        <tr><td>$m_c$</td><td>Khối lượng đối trọng</td><td>kg</td></tr>
+        <tr><td>$L_a$</td><td>Chiều dài cánh tay travel</td><td>m</td></tr>
+        <tr><td>$L_h$</td><td>Chiều dài đầu helicopter (pivot → motor)</td><td>m</td></tr>
+        <tr><td>$J_\epsilon$</td><td>Momen quán tính quanh trục Pitch</td><td>kg·m²</td></tr>
+        <tr><td>$J_\lambda(\epsilon)$</td><td>Momen quán tính quanh trục Travel</td><td>kg·m²</td></tr>
+        <tr><td>$K_f,\,K_b$</td><td>Hệ số lực nâng motor trước/sau</td><td>N/V</td></tr>
+        <tr><td>$B_\epsilon,\,B_\lambda$</td><td>Hệ số cản nhớt Pitch/Travel</td><td>N·m·s/rad</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>1.3 Tín Hiệu Điều Khiển</h3>
+  <div class="math-block highlight">
+    <div class="math-label">Định nghĩa đầu vào</div>
+    $$u_1 = V_f + V_b \quad \text{(tổng — điều khiển Travel)}$$
+    $$u_2 = V_f - V_b \quad \text{(hiệu — điều khiển Pitch)}$$
+  </div>
+
+  <p>Vectơ trạng thái và điều khiển:</p>
+  <div class="math-block">
+    $$\mathbf{x} = \begin{bmatrix}\epsilon\\\lambda\\\dot{\epsilon}\\\dot{\lambda}\end{bmatrix}, \qquad \mathbf{u} = \begin{bmatrix}u_1\\u_2\end{bmatrix}$$
+  </div>
+
+  <!-- ─────────────────── §2 NEWTON-EULER ─────────────────── -->
+  <hr class="divider">
+  <h2 id="s2">1.1 Phương Pháp Newton-Euler</h2>
+
+  <div class="method-intro">
+    <div class="method-num">N</div>
+    <div>
+      <strong>Ý tưởng cốt lõi:</strong>
+      <p>Áp dụng trực tiếp hai định luật nền tảng — Định luật Newton thứ 2 ($\mathbf{F}=m\mathbf{a}$) và phương trình Euler cho chuyển động quay ($\boldsymbol{\tau}=\mathbf{I}\boldsymbol{\alpha}+\boldsymbol{\omega}\times\mathbf{I}\boldsymbol{\omega}$). Phân tích tường minh từng lực, momen tác dụng lên hệ rồi viết phương trình cân bằng cho mỗi bậc tự do.</p>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <p>Momen quán tính Travel $J_\lambda(\epsilon) = (m_f+m_b)L_a^2\cos^2(\epsilon)+J_0$ <strong>phụ thuộc vào góc Pitch</strong> $\epsilon$ — đây là nguồn gốc của tính phi tuyến quan trọng nhất trong hệ!</p>
+  </div>
+
+  <h3>Phân Tích Momen</h3>
+
+  <h4>Trục Pitch ($\epsilon$)</h4>
+  <div class="math-block">
+    $$\tau_\epsilon^{thrust} = (F_f - F_b)\,L_h\cos(\epsilon) = K_{pp}\,u_2\cos(\epsilon)$$
+    $$\tau_\epsilon^{gravity} = -m_{net}\,g\,L_a\cos(\epsilon) \quad \bigl(m_{net}=m_f+m_b-m_c\bigr)$$
+    $$\tau_\epsilon^{damp} = -B_\epsilon\,\dot{\epsilon}$$
+  </div>
+
+  <h4>Trục Travel ($\lambda$)</h4>
+  <div class="math-block">
+    $$\tau_\lambda^{thrust} = (F_f+F_b)\,L_a\cos(\epsilon) = K_{tp}\,u_1\cos(\epsilon)$$
+    $$\tau_\lambda^{damp} = -B_\lambda\,\dot{\lambda}$$
+  </div>
+
+  <h3>Phương Trình Newton-Euler Đầy Đủ</h3>
+
+  <p>Áp dụng $\tau = J\alpha$ và xét biến thiên $J_\lambda$ theo thời gian:</p>
+
+  <div class="math-block result">
+    <div class="math-label">Mô hình phi tuyến — Newton-Euler</div>
+    $$\begin{cases}
+      J_\epsilon\,\ddot{\epsilon} = K_{pp}\cos(\epsilon)\,u_2 - B_\epsilon\,\dot{\epsilon} - m_{net}gL_a\cos(\epsilon)\\[8pt]
+      J_\lambda(\epsilon)\,\ddot{\lambda} = K_{tp}\cos(\epsilon)\,u_1 - B_\lambda\,\dot{\lambda} + (m_f+m_b)L_a^2\sin(2\epsilon)\,\dot{\epsilon}\dot{\lambda}
+    \end{cases}$$
+  </div>
+
+  <h3>Tuyến Tính Hóa ($\epsilon \approx 0$)</h3>
+  <p>Tại điểm cân bằng $\epsilon_0\approx 0$, dùng $\cos\epsilon\to 1$, $\sin\epsilon\to 0$:</p>
+  <div class="math-block highlight">
+    $$\mathbf{A} = \begin{bmatrix}0&0&1&0\\0&0&0&1\\0&0&-\frac{B_\epsilon}{J_\epsilon}&0\\0&0&0&-\frac{B_\lambda}{J_\lambda(0)}\end{bmatrix}, \qquad
+    \mathbf{B} = \begin{bmatrix}0&0\\0&0\\0&\frac{K_{pp}}{J_\epsilon}\\\frac{K_{tp}}{J_\lambda(0)}&0\end{bmatrix}$$
+  </div>
+
+  <!-- ─────────────────── §3 EULER-LAGRANGE ─────────────────── -->
+  <hr class="divider">
+  <h2 id="s3">1.2 Phương Pháp Euler-Lagrange</h2>
+
+  <div class="method-intro">
+    <div class="method-num">L</div>
+    <div>
+      <strong>Ý tưởng cốt lõi:</strong>
+      <p>Dựa trên nguyên lý Hamilton — quỹ đạo thực cực tiểu hóa tác động $S=\int\mathcal{L}\,dt$. Hàm Lagrangian $\mathcal{L}=T-V$ thay thế việc phân tích lực. Phương pháp <em>tự động</em> sinh các số hạng Coriolis và ly tâm.</p>
+    </div>
+  </div>
+
+  <h3>Hàm Lagrangian</h3>
+  <p>Tọa độ suy rộng: $\mathbf{q}=(\epsilon,\lambda)^T$</p>
+
+  <div class="math-block">
+    <div class="math-label">Động năng</div>
+    $$T = \frac{1}{2}J_\epsilon\,\dot{\epsilon}^2 + \frac{1}{2}J_\lambda(\epsilon)\,\dot{\lambda}^2$$
+    $$J_\lambda(\epsilon) = (m_f+m_b)L_a^2\cos^2(\epsilon) + J_0$$
+  </div>
+
+  <div class="math-block">
+    <div class="math-label">Thế năng</div>
+    $$V = m_{net}\,g\,L_a\sin(\epsilon)$$
+  </div>
+
+  <div class="math-block highlight">
+    $$\mathcal{L} = \frac{1}{2}J_\epsilon\dot{\epsilon}^2 + \frac{1}{2}J_\lambda(\epsilon)\dot{\lambda}^2 - m_{net}gL_a\sin(\epsilon)$$
+  </div>
+
+  <h3>Phương Trình Euler-Lagrange</h3>
+  <div class="math-block">
+    $$\frac{d}{dt}\!\left(\frac{\partial\mathcal{L}}{\partial\dot{q}_i}\right) - \frac{\partial\mathcal{L}}{\partial q_i} = Q_i$$
+  </div>
+
+  <h4>Cho $q_1=\epsilon$</h4>
+  <div class="math-block">
+    $$\frac{\partial\mathcal{L}}{\partial\dot{\epsilon}}=J_\epsilon\dot{\epsilon}, \qquad \frac{d}{dt}(\cdot)=J_\epsilon\ddot{\epsilon}$$
+    $$\frac{\partial\mathcal{L}}{\partial\epsilon}=-(m_f+m_b)L_a^2\sin(\epsilon)\cos(\epsilon)\dot{\lambda}^2 - m_{net}gL_a\cos(\epsilon)$$
+  </div>
+
+  <h4>Cho $q_2=\lambda$</h4>
+  <div class="math-block">
+    $$\frac{\partial\mathcal{L}}{\partial\dot{\lambda}}=J_\lambda(\epsilon)\dot{\lambda}$$
+    $$\frac{d}{dt}(J_\lambda\dot{\lambda}) = J_\lambda\ddot{\lambda} - (m_f+m_b)L_a^2\sin(2\epsilon)\dot{\epsilon}\dot{\lambda}$$
+    $$\frac{\partial\mathcal{L}}{\partial\lambda}=0$$
+  </div>
+
+  <h3>Lực Suy Rộng</h3>
+  <div class="math-block">
+    $$Q_\epsilon = K_{pp}u_2\cos(\epsilon) - B_\epsilon\dot{\epsilon}$$
+    $$Q_\lambda = K_{tp}u_1\cos(\epsilon) - B_\lambda\dot{\lambda}$$
+  </div>
+
+  <h3>Mô Hình Ma Trận EL</h3>
+  <div class="math-block result">
+    <div class="math-label">$\mathbf{M}(\mathbf{q})\ddot{\mathbf{q}} + \mathbf{C}(\mathbf{q},\dot{\mathbf{q}})\dot{\mathbf{q}} + \mathbf{G}(\mathbf{q}) = \mathbf{Q}$</div>
+    $$\mathbf{M} = \begin{bmatrix}J_\epsilon&0\\0&J_\lambda(\epsilon)\end{bmatrix}$$
+    $$\mathbf{C} = \begin{bmatrix}0&-\tfrac{1}{2}(m_f+m_b)L_a^2\sin(2\epsilon)\dot{\lambda}\\-\tfrac{1}{2}(m_f+m_b)L_a^2\sin(2\epsilon)\dot{\epsilon}&0\end{bmatrix}$$
+    $$\mathbf{G} = \begin{bmatrix}m_{net}gL_a\cos(\epsilon)\\0\end{bmatrix}$$
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">✅</span>
+    <p>Ma trận khối lượng $\mathbf{M}$ là <strong>đường chéo</strong> (hai trục vuông góc nhau), nhưng phụ thuộc $\epsilon$. Euler-Lagrange tự động sinh số hạng Coriolis mà Newton-Euler phải tính thủ công.</p>
+  </div>
+
+  <!-- ─────────────────── §4 HAMILTONIAN ─────────────────── -->
+  <hr class="divider">
+  <h2 id="s4">1.3 Phương Pháp Hamiltonian Mechanics</h2>
+
+  <div class="method-intro">
+    <div class="method-num">H</div>
+    <div>
+      <strong>Ý tưởng cốt lõi:</strong>
+      <p>Biến đổi Legendre sang không gian pha $(q_i, p_i)$ — vị trí và <em>động lượng suy rộng</em>. Hàm Hamiltonian $\mathcal{H}=T+V$ đại diện cho tổng năng lượng. Biến hệ $n$ phương trình bậc 2 thành $2n$ phương trình bậc 1, thuận tiện cho phân tích ổn định và thiết kế IDA-PBC.</p>
+    </div>
+  </div>
+
+  <h3>Động Lượng Suy Rộng</h3>
+  <div class="math-block">
+    $$p_\epsilon = \frac{\partial\mathcal{L}}{\partial\dot{\epsilon}} = J_\epsilon\dot{\epsilon} \quad\Rightarrow\quad \dot{\epsilon}=\frac{p_\epsilon}{J_\epsilon}$$
+    $$p_\lambda = \frac{\partial\mathcal{L}}{\partial\dot{\lambda}} = J_\lambda(\epsilon)\dot{\lambda} \quad\Rightarrow\quad \dot{\lambda}=\frac{p_\lambda}{J_\lambda(\epsilon)}$$
+  </div>
+
+  <h3>Hàm Hamiltonian</h3>
+  <div class="math-block highlight">
+    $$\mathcal{H}(\epsilon,\lambda,p_\epsilon,p_\lambda) = \frac{p_\epsilon^2}{2J_\epsilon} + \frac{p_\lambda^2}{2J_\lambda(\epsilon)} + m_{net}gL_a\sin(\epsilon)$$
+  </div>
+
+  <h3>Phương Trình Hamilton (Canonical)</h3>
+  <div class="math-block">
+    $$\dot{q}_i = \frac{\partial\mathcal{H}}{\partial p_i}, \qquad \dot{p}_i = -\frac{\partial\mathcal{H}}{\partial q_i} + Q_i$$
+  </div>
+
+  <div class="math-block result">
+    <div class="math-label">Hệ phương trình trạng thái Hamiltonian</div>
+    $$\dot{\epsilon} = \frac{p_\epsilon}{J_\epsilon}$$
+    $$\dot{\lambda} = \frac{p_\lambda}{J_\lambda(\epsilon)}$$
+    $$\dot{p}_\epsilon = \frac{(m_f+m_b)L_a^2\sin(2\epsilon)}{2J_\lambda^2(\epsilon)}\,p_\lambda^2 - m_{net}gL_a\cos\epsilon + K_{pp}\cos\epsilon\,u_2 - \frac{B_\epsilon}{J_\epsilon}p_\epsilon$$
+    $$\dot{p}_\lambda = K_{tp}\cos\epsilon\,u_1 - \frac{B_\lambda}{J_\lambda(\epsilon)}p_\lambda$$
+  </div>
+
+  <h3>Cấu Trúc Port-Hamiltonian</h3>
+  <div class="math-block">
+    $$\dot{\mathbf{x}} = \bigl[\mathbf{J}(\mathbf{x})-\mathbf{R}(\mathbf{x})\bigr]\frac{\partial\mathcal{H}}{\partial\mathbf{x}} + \mathbf{g}(\mathbf{x})\mathbf{u}$$
+  </div>
+  <div class="math-block">
+    $$\mathbf{J} = \begin{bmatrix}0&0&1&0\\0&0&0&1\\-1&0&0&0\\0&-1&0&0\end{bmatrix}, \quad
+    \mathbf{R} = \begin{bmatrix}0&&&\\&0&&\\&&B_\epsilon/J_\epsilon^2&\\&&&B_\lambda/J_\lambda^2\end{bmatrix}$$
+  </div>
+
+  <h3>Phân Tích Năng Lượng</h3>
+  <div class="math-block highlight">
+    $$\dot{\mathcal{H}} = \underbrace{-(B_\epsilon\dot{\epsilon}^2+B_\lambda\dot{\lambda}^2)}_{\text{tiêu tán}} + \underbrace{(K_{pp}u_2\dot{\epsilon}+K_{tp}u_1\dot{\lambda})\cos\epsilon}_{\text{công suất đầu vào}}$$
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <p>Hệ là <strong>dissipative</strong>. Cấu trúc Port-Hamiltonian là cơ sở cho thiết kế bộ điều khiển <strong>IDA-PBC</strong> (Interconnection and Damping Assignment Passivity-Based Control).</p>
+  </div>
+
+  <!-- ─────────────────── §5 KANE ─────────────────── -->
+  <hr class="divider">
+  <h2 id="s5">1.4 Phương Pháp Kane's Equations</h2>
+
+  <div class="method-intro">
+    <div class="method-num">K</div>
+    <div>
+      <strong>Ý tưởng cốt lõi:</strong>
+      <p>Dùng <em>vận tốc suy rộng</em> $u_r$ và <em>vận tốc bộ phận</em> (partial velocities) thay vì Lagrangian. Phương trình Kane: $\tilde{F}_r + \tilde{F}_r^*=0$. Phương pháp này là <strong>hiệu quả nhất</strong> về mặt tính toán cho hệ đa vật với ràng buộc phi holonomic.</p>
+    </div>
+  </div>
+
+  <h3>Vận Tốc Suy Rộng</h3>
+  <div class="math-block">
+    $$u_1 = \dot{\epsilon}, \qquad u_2 = \dot{\lambda}$$
+  </div>
+
+  <h3>Vận Tốc Bộ Phận (Partial Velocities)</h3>
+  <div class="math-block">
+    $$\mathbf{v}_f^{(1)} = \frac{\partial\mathbf{v}_f}{\partial u_1} = L_a\begin{bmatrix}-\cos\lambda\sin\epsilon\\-\sin\lambda\sin\epsilon\\\cos\epsilon\end{bmatrix}$$
+    $$\mathbf{v}_f^{(2)} = \frac{\partial\mathbf{v}_f}{\partial u_2} = L_a\begin{bmatrix}-\sin\lambda\cos\epsilon\\\cos\lambda\cos\epsilon\\0\end{bmatrix}$$
+  </div>
+
+  <h3>Lực Kane Suy Rộng $\tilde{F}_r$</h3>
+  <div class="math-block">
+    $$\tilde{F}_1 = K_{pp}\,u_{ctrl,2}\cos\epsilon - m_{net}gL_a\cos\epsilon - B_\epsilon u_1$$
+    $$\tilde{F}_2 = K_{tp}\,u_{ctrl,1}\cos\epsilon - B_\lambda u_2$$
+  </div>
+
+  <h3>Lực Kane Quán Tính $\tilde{F}_r^*$</h3>
+  <div class="math-block">
+    $$\tilde{F}_1^* = -J_\epsilon\dot{u}_1 + (m_f+m_b)L_a^2\sin\epsilon\cos\epsilon\,u_2^2$$
+    $$\tilde{F}_2^* = -J_\lambda(\epsilon)\dot{u}_2 + (m_f+m_b)L_a^2\sin(2\epsilon)\,u_1 u_2$$
+  </div>
+
+  <h3>Phương Trình Kane ($\tilde{F}_r+\tilde{F}_r^*=0$)</h3>
+  <div class="math-block result">
+    <div class="math-label">Mô hình phi tuyến — Kane</div>
+    $$J_\epsilon\ddot{\epsilon} = K_{pp}\cos\epsilon\,u_2 - B_\epsilon\dot{\epsilon} - m_{net}gL_a\cos\epsilon + (m_f+m_b)L_a^2\sin\epsilon\cos\epsilon\,\dot{\lambda}^2$$
+    $$J_\lambda(\epsilon)\ddot{\lambda} = K_{tp}\cos\epsilon\,u_1 - B_\lambda\dot{\lambda} + (m_f+m_b)L_a^2\sin(2\epsilon)\,\dot{\epsilon}\dot{\lambda}$$
+  </div>
+
+  <div class="callout note">
+    <span class="callout-icon">📌</span>
+    <p>Kết quả <strong>nhất quán hoàn toàn</strong> với Euler-Lagrange. Kane đặc biệt mạnh khi có ràng buộc phi holonomic (bánh xe lăn không trượt, robot trườn, v.v.).</p>
+  </div>
+
+  <!-- ─────────────────── §6 GAUSS ─────────────────── -->
+  <hr class="divider">
+  <h2 id="s6">1.5 Gauss's Principle of Least Constraint</h2>
+
+  <div class="method-intro">
+    <div class="method-num">G</div>
+    <div>
+      <strong>Ý tưởng cốt lõi:</strong>
+      <p>Chuyển động thực <em>cực tiểu hóa</em> hàm curvature Gauss $\mathcal{Z}$ — đo độ sai lệch giữa gia tốc thực và gia tốc "tự do" (không ràng buộc). Đây là bài toán <strong>QP bậc hai có ràng buộc tuyến tính</strong>.</p>
+    </div>
+  </div>
+
+  <h3>Hàm Gauss (Compulsion)</h3>
+  <div class="math-block highlight">
+    $$\mathcal{Z}(\ddot{\mathbf{q}}) = \sum_k \frac{m_k}{2}\left|\mathbf{a}_k - \mathbf{a}_k^{free}\right|^2 = \frac{1}{2}\ddot{\mathbf{q}}^T\mathbf{M}\ddot{\mathbf{q}} - \ddot{\mathbf{q}}^T\mathbf{c} + \text{const}$$
+  </div>
+
+  <h3>Điều Kiện Tối Ưu</h3>
+  <div class="math-block">
+    $$\frac{\partial\mathcal{Z}}{\partial\ddot{\mathbf{q}}} = \mathbf{0} \quad\Rightarrow\quad \mathbf{M}\ddot{\mathbf{q}} = \mathbf{c} = \mathbf{Q}^{active} - \mathbf{C}\dot{\mathbf{q}} - \mathbf{G}$$
+  </div>
+
+  <h3>Trường Hợp Có Ràng Buộc Phi Holonomic</h3>
+  <p>Ràng buộc dạng: $\mathbf{A}(\mathbf{q})\ddot{\mathbf{q}} = \mathbf{b}$. Điều kiện KKT:</p>
+  <div class="math-block">
+    $$\begin{bmatrix}\mathbf{M}&\mathbf{A}^T\\\mathbf{A}&\mathbf{0}\end{bmatrix}\begin{bmatrix}\ddot{\mathbf{q}}\\\boldsymbol{\lambda}\end{bmatrix}=\begin{bmatrix}\mathbf{c}\\-\dot{\mathbf{A}}\dot{\mathbf{q}}\end{bmatrix}$$
+  </div>
+
+  <h3>Mở Rộng Udwadia-Kalaba (1992)</h3>
+  <div class="math-block highlight">
+    <div class="math-label">Nghiệm tường minh tổng quát</div>
+    $$\mathbf{M}\ddot{\mathbf{q}} = \mathbf{Q} + \mathbf{M}^{1/2}(\mathbf{A}\mathbf{M}^{-1/2})^+(\mathbf{b}-\mathbf{A}\mathbf{M}^{-1}\mathbf{Q})$$
+  </div>
+  <p>$(·)^+$: pseudo-inverse Moore-Penrose — cho phép giải trực tiếp mọi hệ có ràng buộc holonomic hoặc phi holonomic.</p>
+
+  <h3>Áp Dụng Cho Helicopter 2DOF</h3>
+  <div class="math-block result">
+    $$\begin{bmatrix}J_\epsilon&0\\0&J_\lambda(\epsilon)\end{bmatrix}\begin{bmatrix}\ddot{\epsilon}\\\ddot{\lambda}\end{bmatrix} = \begin{bmatrix}K_{pp}\cos\epsilon\,u_2-B_\epsilon\dot{\epsilon}-m_{net}gL_a\cos\epsilon+(m_f+m_b)L_a^2\sin\epsilon\cos\epsilon\,\dot{\lambda}^2\\K_{tp}\cos\epsilon\,u_1-B_\lambda\dot{\lambda}+(m_f+m_b)L_a^2\sin(2\epsilon)\,\dot{\epsilon}\dot{\lambda}\end{bmatrix}$$
+  </div>
+
+  <!-- ─────────────────── §7 DATA-DRIVEN ─────────────────── -->
+  <hr class="divider">
+  <h2 id="s7">1.6 Black-box Data-Driven Modeling</h2>
+
+  <div class="method-intro">
+    <div class="method-num">D</div>
+    <div>
+      <strong>Ý tưởng cốt lõi:</strong>
+      <p>Học mô hình <em>trực tiếp từ dữ liệu đo lường</em>, không cần định luật vật lý. Phù hợp khi mô hình quá phức tạp hoặc chưa biết cấu trúc nội tại. Đánh đổi: cần nhiều dữ liệu, tính tổng quát hóa hạn chế.</p>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <p>Phương pháp data-driven đòi hỏi <strong>tín hiệu kích thích phong phú</strong> (persistent excitation). Thiết kế thí nghiệm kém dẫn đến mô hình không đại diện cho toàn bộ vùng làm việc.</p>
+  </div>
+
+  <h3>7.1 ARX / ARMAX — Nhận Dạng Tuyến Tính</h3>
+  <div class="math-block">
+    $$A(z^{-1})\mathbf{y}(k) = B(z^{-1})\mathbf{u}(k-d) + \mathbf{e}(k)$$
+    $$\hat{\boldsymbol{\theta}} = \left(\boldsymbol{\Phi}^T\boldsymbol{\Phi}\right)^{-1}\boldsymbol{\Phi}^T\mathbf{Y} \quad \text{(Least Squares)}$$
+  </div>
+
+  <h3>7.2 Subspace Identification — N4SID</h3>
+  <div class="math-block">
+    $$\mathbf{H} = \mathbf{U}\boldsymbol{\Sigma}\mathbf{V}^T \quad(\text{SVD}) \quad\Rightarrow\quad n = |\{\sigma_i \text{ đáng kể}\}|$$
+  </div>
+  <p>Trích xuất $(\mathbf{A},\mathbf{B},\mathbf{C},\mathbf{D})$ từ ma trận observability/controllability của Hankel data matrix.</p>
+
+  <h3>7.3 SINDy — Nhận Dạng Phi Tuyến Thưa</h3>
+  <div class="math-block highlight">
+    $$\dot{\mathbf{x}} = \boldsymbol{\Theta}(\mathbf{X})\,\boldsymbol{\Xi}$$
+    $$\boldsymbol{\Theta} = \bigl[1,\;\epsilon,\;\lambda,\;\dot{\epsilon},\;\dot{\lambda},\;\epsilon^2,\;\cos\epsilon,\;\sin\epsilon,\;\dot{\lambda}^2,\;\dot{\epsilon}\dot{\lambda},\;\ldots\bigr]$$
+    $$\hat{\boldsymbol{\Xi}} = \arg\min_{\boldsymbol{\Xi}}\|\dot{\mathbf{X}}-\boldsymbol{\Theta}\boldsymbol{\Xi}\|_2^2 + \lambda_1\|\boldsymbol{\Xi}\|_1 \quad\text{(LASSO)}$$
+  </div>
+
+  <pre><code><span class="kw">import</span> pysindy <span class="kw">as</span> ps
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">def</span> <span class="fn">sindy_helicopter</span>(X, U, dt):
+    <span class="cm"># X: [ε, λ, dε, dλ] — U: [u1, u2]</span>
+    lib = ps.CustomLibrary(
+        library_functions=[
+            <span class="kw">lambda</span> x: x,
+            <span class="kw">lambda</span> x: x**<span class="nu">2</span>,
+            <span class="kw">lambda</span> x: np.<span class="fn">sin</span>(x),
+            <span class="kw">lambda</span> x: np.<span class="fn">cos</span>(x),
+        ],
+        function_names=[<span class="st">''</span>, <span class="st">'^2'</span>, <span class="st">'sin'</span>, <span class="st">'cos'</span>]
+    )
+    model = ps.<span class="fn">SINDy</span>(
+        optimizer=ps.<span class="fn">STLSQ</span>(threshold=<span class="nu">0.05</span>),
+        feature_library=lib,
+        feature_names=[<span class="st">'ε'</span>, <span class="st">'λ'</span>, <span class="st">'dε'</span>, <span class="st">'dλ'</span>]
+    )
+    model.<span class="fn">fit</span>(X, u=U, t=dt)
+    model.<span class="fn">print</span>()
+    <span class="kw">return</span> model</code></pre>
+
+  <h3>7.4 Neural ODE</h3>
+  <div class="math-block">
+    $$\dot{\mathbf{x}} = f_\theta(\mathbf{x},\mathbf{u}), \qquad \mathbf{x}(t_1)=\mathbf{x}(t_0)+\int_{t_0}^{t_1}f_\theta(\mathbf{x},\mathbf{u})\,dt$$
+  </div>
+
+  <pre><code><span class="kw">import</span> torch, torch.nn <span class="kw">as</span> nn
+<span class="kw">from</span> torchdiffeq <span class="kw">import</span> odeint
+
+<span class="kw">class</span> <span class="fn">HelicopterNeuralODE</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, hidden=<span class="nu">64</span>):
+        <span class="fn">super</span>().__init__()
+        self.net = nn.<span class="fn">Sequential</span>(
+            nn.<span class="fn">Linear</span>(<span class="nu">6</span>, hidden), nn.<span class="fn">Tanh</span>(),  <span class="cm"># [ε,λ,dε,dλ,u1,u2]</span>
+            nn.<span class="fn">Linear</span>(hidden, hidden), nn.<span class="fn">Tanh</span>(),
+            nn.<span class="fn">Linear</span>(hidden, <span class="nu">4</span>)              <span class="cm"># [dε,dλ,ddε,ddλ]</span>
+        )
+    <span class="kw">def</span> <span class="fn">forward</span>(self, t, xu):
+        <span class="kw">return</span> self.net(xu)</code></pre>
+
+  <h3>7.5 Gaussian Process Regression</h3>
+  <div class="math-block">
+    $$f(\mathbf{x})\sim\mathcal{GP}(m(\mathbf{x}),\,k(\mathbf{x},\mathbf{x}'))$$
+    $$\mu^* = k(\mathbf{x}^*,\mathbf{X})[\mathbf{K}+\sigma_n^2\mathbf{I}]^{-1}\mathbf{y}$$
+    $$\sigma^{*2} = k(\mathbf{x}^*,\mathbf{x}^*) - k(\mathbf{x}^*,\mathbf{X})[\mathbf{K}+\sigma_n^2\mathbf{I}]^{-1}k(\mathbf{X},\mathbf{x}^*)$$
+  </div>
+
+  <h3>7.6 Chỉ Số Kiểm Định</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Chỉ số</th><th>Công thức</th><th>Mục tiêu</th></tr></thead>
+      <tbody>
+        <tr><td><strong>RMSE</strong></td><td>$\sqrt{\frac{1}{N}\sum(y_i-\hat y_i)^2}$</td><td>→ 0</td></tr>
+        <tr><td><strong>NRMSE</strong></td><td>$1-\frac{\|y-\hat y\|}{\|y-\bar y\|}$</td><td>→ 1</td></tr>
+        <tr><td><strong>VAF</strong></td><td>$\left(1-\frac{\operatorname{Var}(y-\hat y)}{\operatorname{Var}(y)}\right)\times100\%$</td><td>→ 100%</td></tr>
+        <tr><td><strong>BFR</strong></td><td>Best Fit Rate</td><td>&gt; 80%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ─────────────────── §8 COMPARISON ─────────────────── -->
+  <hr class="divider">
+  <h2 id="s8">So Sánh Tổng Hợp</h2>
+
+  <h3>Mô Hình Phi Tuyến Thống Nhất</h3>
+  <p>Cả 5 phương pháp cơ học dẫn đến <strong>cùng một cặp phương trình</strong>:</p>
+
+  <div class="math-block result">
+    <div class="math-label">✅ Kết Quả Đồng Nhất — Mô Hình Phi Tuyến</div>
+    $$\boxed{\begin{cases}
+      J_\epsilon\ddot{\epsilon} = K_{pp}\cos\epsilon\,u_2 - B_\epsilon\dot{\epsilon} - m_{net}gL_a\cos\epsilon
+        + (m_f+m_b)L_a^2\sin\epsilon\cos\epsilon\,\dot{\lambda}^2\\[10pt]
+      J_\lambda(\epsilon)\ddot{\lambda} = K_{tp}\cos\epsilon\,u_1 - B_\lambda\dot{\lambda}
+        + (m_f+m_b)L_a^2\sin(2\epsilon)\,\dot{\epsilon}\dot{\lambda}
+    \end{cases}}$$
+    $$J_\lambda(\epsilon) = (m_f+m_b)L_a^2\cos^2(\epsilon)+J_0$$
+  </div>
+
+  <h3>Hàm Truyền Tuyến Tính Hóa ($\epsilon\approx 0$)</h3>
+  <div class="math-block highlight">
+    $$G_\text{pitch}(s) = \frac{\epsilon(s)}{u_2(s)} = \frac{K_{pp}/J_\epsilon}{s\!\left(s+\dfrac{B_\epsilon}{J_\epsilon}\right)}$$
+    $$G_\text{travel}(s) = \frac{\lambda(s)}{u_1(s)} = \frac{K_{tp}/J_0}{s\!\left(s+\dfrac{B_\lambda}{J_0}\right)}$$
+  </div>
+
+  <div class="callout danger">
+    <span class="callout-icon">🔴</span>
+    <p>Cả hai kênh có <strong>cực kép tại $s=0$</strong> (tích phân thuần). Hệ là <em>marginally stable</em> trong vòng hở → bắt buộc cần điều khiển cả vị trí lẫn vận tốc!</p>
+  </div>
+
+  <h3>Bảng So Sánh Toàn Diện</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Tiêu chí</th>
+          <th>Newton-Euler</th>
+          <th>Euler-Lagrange</th>
+          <th>Hamiltonian</th>
+          <th>Kane</th>
+          <th>Gauss</th>
+          <th>Data-Driven</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Cơ sở</td><td>$\mathbf{F}=m\mathbf{a}$</td><td>$\delta S=0$</td><td>Legendre $T$</td><td>D'Alembert</td><td>min $\mathcal{Z}$</td><td>Thống kê/ML</td></tr>
+        <tr><td>Biến chính</td><td>Lực/Momen</td><td>$q,\dot q$</td><td>$q,p$</td><td>$u_r$</td><td>$\ddot q$</td><td>Dữ liệu</td></tr>
+        <tr><td>Coriolis tự động</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅ (ẩn)</td></tr>
+        <tr><td>Ràng buộc phi holonomic</td><td>Khó</td><td>Khó</td><td>Khó</td><td>✅ Dễ</td><td>✅ Dễ</td><td>Tự động</td></tr>
+        <tr><td>Không cần mô hình vật lý</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td></tr>
+        <tr><td>Thiết kế IDA-PBC</td><td>—</td><td>Khó</td><td>✅ Tự nhiên</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td>Diễn giải vật lý</td><td>Cao</td><td>Cao</td><td>Cao</td><td>Cao</td><td>Trung bình</td><td>Thấp</td></tr>
+        <tr><td>Yêu cầu dữ liệu</td><td>Không</td><td>Không</td><td>Không</td><td>Không</td><td>Không</td><td>Nhiều ⚠️</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Khuyến Nghị Chọn Phương Pháp</h3>
+  <div class="compare-grid">
+    <div class="compare-card">
+      <h4>🎓 Giảng dạy / Hiểu vật lý</h4>
+      <ul><li>Newton-Euler</li><li>Euler-Lagrange</li></ul>
+    </div>
+    <div class="compare-card">
+      <h4>⚡ Phân tích ổn định / IDA-PBC</h4>
+      <ul><li>Hamiltonian</li><li>Port-Hamiltonian</li></ul>
+    </div>
+    <div class="compare-card">
+      <h4>🤖 Hệ đa vật / Ràng buộc</h4>
+      <ul><li>Kane's Equations</li><li>Gauss / Udwadia-Kalaba</li></ul>
+    </div>
+    <div class="compare-card">
+      <h4>📊 Không có mô hình vật lý</h4>
+      <ul><li>SINDy (phi tuyến)</li><li>N4SID (tuyến tính)</li><li>Neural ODE</li></ul>
+    </div>
+    <div class="compare-card">
+      <h4>🎯 Thiết kế nhanh / Thực tế</h4>
+      <ul><li>Tuyến tính hóa + LQR/PID</li><li>ARX + MPC</li></ul>
+    </div>
+    <div class="compare-card">
+      <h4>🔬 Điều khiển MPC phi tuyến</h4>
+      <ul><li>Euler-Lagrange + SINDy</li><li>GP Regression + MPC</li></ul>
+    </div>
+  </div>
+
+  <!-- ─────────────────── REFERENCES ─────────────────── -->
+  <hr class="divider">
+  <h2 id="refs">Tài Liệu Tham Khảo</h2>
+
+  <ol class="ref-list">
+    <li><em>Quanser Inc.</em> (2012). <strong>2 DOF Helicopter Experiment Reference Manual</strong>. Quanser Inc., Markham, Ontario.</li>
+    <li><em>Greenwood, D. T.</em> (2003). <strong>Advanced Dynamics</strong>. Cambridge University Press.</li>
+    <li><em>Spong, M. W., Hutchinson, S., &amp; Vidyasagar, M.</em> (2006). <strong>Robot Modeling and Control</strong>. John Wiley &amp; Sons.</li>
+    <li><em>Kane, T. R., &amp; Levinson, D. A.</em> (1985). <strong>Dynamics: Theory and Applications</strong>. McGraw-Hill.</li>
+    <li><em>Gauss, C. F.</em> (1829). Über ein neues allgemeines Grundgesetz der Mechanik. <strong>Journal für die reine und angewandte Mathematik</strong>, 4, 232–235.</li>
+    <li><em>Udwadia, F. E., &amp; Kalaba, R. E.</em> (1992). A new perspective on constrained motion. <strong>Proc. Royal Society A</strong>, 439, 407–410.</li>
+    <li><em>Brunton, S. L., Proctor, J. L., &amp; Kutz, J. N.</em> (2016). Discovering governing equations from data by sparse identification of nonlinear dynamical systems. <strong>PNAS</strong>, 113(15), 3932–3937.</li>
+    <li><em>Ljung, L.</em> (1999). <strong>System Identification: Theory for the User</strong> (2nd ed.). Prentice Hall.</li>
+    <li><em>van der Schaft, A.</em> (2000). <strong>L2-Gain and Passivity Techniques in Nonlinear Control</strong>. Springer.</li>
+    <li><em>Chen, R. T. Q. et al.</em> (2018). Neural ordinary differential equations. <strong>NeurIPS 2018</strong>.</li>
+  </ol>
+
+  <div class="footer">
+    <p>Tài liệu biên soạn bởi <strong>Antigravity AI</strong> &nbsp;|&nbsp; Phiên bản 1.0 &nbsp;|&nbsp; 2026</p>
+    <p style="margin-top:6px">Để xuất PDF: mở file này trong trình duyệt → <kbd>Ctrl+P</kbd> → <em>Save as PDF</em></p>
+  </div>
+
+</div>
+</body>
+</html>
