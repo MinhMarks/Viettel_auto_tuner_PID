@@ -1,0 +1,232 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\title{\textbf{Hướng dẫn Sử dụng Chi tiết: Viettel Auto-Tuner\\(Hệ thống Tối ưu hóa tham số bộ điều khiển trực thăng 2-DOF)}}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Giới thiệu Tổng quan}
+Tài liệu này cung cấp hướng dẫn vận hành toàn diện \textbf{Viettel Auto-Tuner}, từ quá trình cài đặt, khởi chạy hệ thống, cho đến các thao tác cấu hình, giám sát và xử lý lỗi chuyên sâu.
+
+\section{Hướng dẫn Khởi động Hệ thống (Startup \& Installation)}
+
+\textbf{Điều kiện cần:}
+\begin{itemize}
+    \item Cài đặt Python 3.8+ và Node.js 18+ trên máy tính.
+    \item Khởi tạo sẵn môi trường ảo Python tại thư mục \texttt{backend/venv}.
+\end{itemize}
+
+\textbf{Các bước khởi động tự động (Khuyến nghị):}
+\begin{enumerate}
+    \item Truy cập thư mục gốc của dự án (ví dụ: \texttt{d:\textbackslash UIT\textbackslash Research\textbackslash Viettel\textbackslash}).
+    \item Khởi chạy tệp thực thi \texttt{start\_project.bat}.
+    \item Kiểm tra 2 cửa sổ Command Prompt riêng biệt cho Backend (cổng \texttt{8088}) và Frontend (cổng \texttt{3088}). Việc khởi chạy thành công được minh họa như trong \textbf{Hình~\ref{fig:startup_terminals}}.
+    \item Truy cập giao diện web tại địa chỉ \texttt{http://localhost:3088} thông qua trình duyệt.
+\end{enumerate}
+
+\textbf{Các bước khởi động thủ công:}
+\begin{enumerate}
+    \item Mở Command Prompt cho Backend, chạy tuần tự các lệnh sau:
+    \begin{itemize}
+        \item \texttt{cd backend}
+        \item \texttt{venv\textbackslash Scripts\textbackslash activate}
+        \item \texttt{python -m uvicorn main:app --port 8088}
+    \end{itemize}
+    \item Mở Command Prompt thứ hai cho Frontend, chạy các lệnh sau:
+    \begin{itemize}
+        \item \texttt{cd frontend}
+        \item \texttt{npm run dev -- --port 3088}
+    \end{itemize}
+    \item Truy cập giao diện web tại địa chỉ \texttt{http://localhost:3088} thông qua trình duyệt.
+\end{enumerate}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/startup_terminals.png}
+    \caption{Cửa sổ Command Prompt khi khởi động Backend và Frontend thành công}
+    \label{fig:startup_terminals}
+\end{figure}
+
+\textbf{Kết quả kỳ vọng:} \\
+Hệ thống Frontend hiển thị giao diện chính của Viettel Auto-Tuner. Cửa sổ Backend báo hiệu "Application startup complete".
+
+\section{Phân tích Tối ưu hóa (Ideal Tuning)}
+
+\textbf{Điều kiện cần:}
+\begin{itemize}
+    \item Hoàn tất bước khởi động hệ thống.
+    \item Đảm bảo Backend không báo lỗi kết nối.
+\end{itemize}
+
+\textbf{Các bước thực hiện:}
+\begin{enumerate}
+    \item Mở thẻ \textbf{[Experiments]}, chọn thẻ phụ \textbf{[1. Ideal Tuning]}.
+    \item Thiết lập điểm đặt mục tiêu tại bảng \textbf{[Global Config]} (ví dụ: Setpoint Pitch, Setpoint Yaw).
+    \item Lựa chọn hàm mục tiêu tại danh sách \textbf{[Objective Function Structure]}.
+    \item Chọn chiến lược phạt tại danh sách \textbf{[Tuning Profile (Weights)]} (nhập \texttt{1. Balanced}, \texttt{2. Aggressive Tracking}, \texttt{3. Eco \& Smooth}, hoặc \texttt{4. Strict Safety}). Tham khảo \textbf{Hình~\ref{fig:ideal_tuning_config}}.
+    
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/ideal_tuning_config.png}
+    \caption{Thẻ [1. Ideal Tuning] với các thông số cấu hình Global Config và Tuning Profile}
+    \label{fig:ideal_tuning_config}
+\end{figure}
+
+    \item Nhập số lượng thế hệ tối ưu tại các trường như \textbf{[GA Iters]}, \textbf{[PSO Iters]} (ví dụ: \texttt{50}).
+    \item Nhấp chuột vào nút \textbf{[Run Analysis]}. Quan sát thanh tiến trình báo cáo phần trăm hoàn thành thuật toán (\textbf{Hình~\ref{fig:ideal_tuning_run}}).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/ideal_tuning_run.png}
+    \caption{Nút [Run Analysis] và thanh tiến trình đang thực thi}
+    \label{fig:ideal_tuning_run}
+\end{figure}
+
+    \item Nhấp chuột vào các nút thuật toán trên biểu đồ \textbf{Main Comparison} để bật hoặc tắt hiển thị. So sánh dữ liệu hội tụ tại \textbf{Hình~\ref{fig:ideal_tuning_charts}}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/ideal_tuning_charts.png}
+    \caption{Đồ thị ``Comparison of Best Models'' và ``Convergence Chart''}
+    \label{fig:ideal_tuning_charts}
+\end{figure}
+
+\end{enumerate}
+
+\textbf{Kết quả kỳ vọng:} \\
+Biểu đồ thời gian (Time Response) cập nhật đường tín hiệu của các thuật toán. Các bảng thông số hiệu năng (Rise Time, Overshoot) hiển thị giá trị cụ thể.
+
+\section{Đánh giá Độ bền vững (Robustness Sweep)}
+
+\textbf{Điều kiện cần:}
+\begin{itemize}
+    \item Hoàn thành "Phân tích Tối ưu hóa" ít nhất một thuật toán để có tham số tham chiếu.
+\end{itemize}
+
+\textbf{Các bước thực hiện:}
+\begin{enumerate}
+    \item Mở thẻ \textbf{[Experiments]}, chọn thẻ phụ \textbf{[2. Robustness Sweep]}.
+    \item Nhập số lượng bài kiểm tra tại trường \textbf{[Number of Configs]} (ví dụ: \texttt{6}).
+    \item Điền giá trị nhiễu ban đầu vào cột \textbf{[Base Value]} (ví dụ: \texttt{Wind Pitch = 0.01}).
+    \item Điền bước nhảy nhiễu vào cột \textbf{[Step Increment]} (ví dụ: \texttt{0.01} mỗi bước). Tham khảo \textbf{Hình~\ref{fig:robustness_config}}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/robustness_config.png}
+    \caption{Bảng cấu hình ``Robustness Analysis'' và các giá trị Base Value, Step Increment}
+    \label{fig:robustness_config}
+\end{figure}
+
+    \item Nhấp chuột vào nút \textbf{[Run Sweep]}. 
+    \item Đánh giá kết quả trên các biểu đồ (Rise Time, Overshoot, Error) theo từng mức nhiễu (\textbf{Hình~\ref{fig:robustness_charts}}).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/robustness_charts.png}
+    \caption{Đồ thị phân tích độ bền vững (Rise Time, Overshoot, Error)}
+    \label{fig:robustness_charts}
+\end{figure}
+
+\end{enumerate}
+
+\textbf{Kết quả kỳ vọng:} \\
+Hệ thống kết xuất 5 biểu đồ đường (Line chart) thể hiện sự suy giảm hiệu năng của các bộ điều khiển theo hàm tăng dần của nhiễu động.
+
+\section{Giám sát trên Mô phỏng 3D}
+
+\textbf{Điều kiện cần:}
+\begin{itemize}
+    \item Ít nhất một thuật toán đã được tối ưu hóa thành công thông qua tab Ideal Tuning.
+\end{itemize}
+
+\textbf{Các bước thực hiện:}
+\begin{enumerate}
+    \item Mở thẻ \textbf{[3D Simulation]} trên thanh điều hướng chính.
+    \item Lựa chọn thuật toán tại danh sách thả xuống \textbf{[Controller Algorithm]} (ví dụ: \texttt{PSO}). Tham khảo \textbf{Hình~\ref{fig:3d_sim_settings}}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/3d_sim_settings.png}
+    \caption{Bảng cấu hình ``3D SIMULATION SETTINGS'' và việc chọn Controller Algorithm}
+    \label{fig:3d_sim_settings}
+\end{figure}
+
+    \item Kéo thả khối \textbf{[Joystick]} ở góc dưới bên phải màn hình để thay đổi điểm đặt của trực thăng.
+    \item Giám sát thông số góc độ tại bảng \textbf{TELEMETRY} ở góc trên bên phải (\textbf{Hình~\ref{fig:3d_sim_dashboard}}).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/3d_sim_dashboard.png}
+    \caption{Giao diện mô phỏng 3D với bảng Telemetry và Joystick}
+    \label{fig:3d_sim_dashboard}
+\end{figure}
+
+\end{enumerate}
+
+\textbf{Kết quả kỳ vọng:} \\
+Mô hình trực thăng 3D di chuyển khớp với điểm đặt Joystick theo thời gian thực. Bảng Telemetry liên tục cập nhật dữ liệu với độ trễ thấp.
+
+\section{Xử lý Sự cố}
+
+\subsection{Cổng giao tiếp bị chiếm dụng (Port in use)}
+\begin{itemize}
+    \item \textbf{Nguyên nhân:} Cổng \texttt{8088} hoặc \texttt{3088} đang bị một ứng dụng ngầm sử dụng.
+    \item \textbf{Giải pháp:} 
+    \begin{enumerate}
+        \item Mở Task Manager.
+        \item Kết thúc (End task) toàn bộ các tiến trình \texttt{python.exe} và \texttt{node.exe}.
+        \item Khởi động lại \texttt{start\_project.bat}.
+    \end{enumerate}
+\end{itemize}
+
+\subsection{Bão hòa điện áp (Voltage Saturation)}
+\begin{itemize}
+    \item \textbf{Nguyên nhân:} Tín hiệu ngõ ra vượt ngưỡng vật lý $\pm 24\text{V}$ do thuật toán yêu cầu tốc độ phản hồi quá cao.
+    \item \textbf{Giải pháp:} 
+    \begin{enumerate}
+        \item Mở thẻ \textbf{[1. Ideal Tuning]}.
+        \item Chọn lại mục \textbf{[Tuning Profile (Weights)]} sang \textbf{[4. Strict Safety]}.
+        \item Nhấp chuột vào nút \textbf{[Run Analysis]} để tối ưu lại.
+    \end{enumerate}
+\end{itemize}
+
+\subsection{Thuật toán không hội tụ}
+\begin{itemize}
+    \item \textbf{Nguyên nhân:} Các thuật toán tối ưu (GA, PSO) bị kẹt tại cực tiểu cục bộ do cấu hình Iters quá nhỏ.
+    \item \textbf{Giải pháp:} 
+    \begin{enumerate}
+        \item Mở thẻ \textbf{[1. Ideal Tuning]}.
+        \item Thay đổi giá trị tại trường \textbf{[Iters]} lên mức tối thiểu \texttt{50}.
+        \item Nhấp chuột vào nút \textbf{[Run Analysis]}.
+    \end{enumerate}
+    Lưu ý: Nếu giao diện 3D báo lỗi đỏ ``Controller has not been tuned yet'' (\textbf{Hình~\ref{fig:troubleshoot_untuned}}), bắt buộc phải chạy \textbf{[Run Analysis]} thành công trước.
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/troubleshoot_untuned.png}
+    \caption{Cảnh báo đỏ do Controller chưa được tune}
+    \label{fig:troubleshoot_untuned}
+\end{figure}
+
+\subsection{Giao diện bị sập (Crash trình duyệt)}
+\begin{itemize}
+    \item \textbf{Nguyên nhân:} Biểu đồ ECharts render quá nhiều lịch sử vòng lặp (hàng ngàn điểm dữ liệu) gây tràn bộ nhớ DOM.
+    \item \textbf{Giải pháp:} 
+    \begin{enumerate}
+        \item Nhấn phím \texttt{F5} để tải lại giao diện.
+        \item Tắt bớt các hiển thị lịch sử không cần thiết. Không lạm dụng nút \textbf{[Show All]}.
+    \end{enumerate}
+\end{itemize}
+
+\end{document}

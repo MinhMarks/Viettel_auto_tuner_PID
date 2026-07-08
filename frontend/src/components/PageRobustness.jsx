@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAppContext } from '../context/AppContext';
 import axios from 'axios';
 import ReactECharts from 'echarts-for-react';
 import { ShieldCheck, Play } from 'lucide-react';
@@ -6,14 +7,15 @@ import GlobalConfigPanel from './GlobalConfigPanel';
 
 const API_BASE = 'http://localhost:8088/api';
 
-export default function PageRobustness({ 
-    manualParams, setManualParams, 
-    tunedParams, 
-    spPitch, setSpPitch, 
-    spYaw, setSpYaw, 
-    simDuration, setSimDuration, 
-    trajectoryType, setTrajectoryType 
-}) {
+export default function PageRobustness() {
+    const {
+        manualParams, setManualParams,
+        tunedParams,
+        spPitch, setSpPitch,
+        spYaw, setSpYaw,
+        simDuration, setSimDuration,
+        trajectoryType, setTrajectoryType,
+    } = useAppContext();
     const [steps, setSteps] = useState(6);
     const [loading, setLoading] = useState(false);
     
@@ -24,7 +26,7 @@ export default function PageRobustness({
     // Store results for each model
     // Shape: { Manual: { '0.00': metrics, ... }, GA: {...} }
     const [sweepResults, setSweepResults] = useState(null);
-    const [visiblePlots, setVisiblePlots] = useState({ Manual: true, GA: true, PSO: false, BO: false });
+    const [visiblePlots, setVisiblePlots] = useState({ Manual: true, GA: true, PSO: false, TPE: false, "CMA-ES": false, GWO: false });
 
     const handleRunSweep = async () => {
         setLoading(true);
@@ -48,7 +50,9 @@ export default function PageRobustness({
             await runModel('Manual', manualParams);
             if (tunedParams.GA) await runModel('GA', tunedParams.GA);
             if (tunedParams.PSO) await runModel('PSO', tunedParams.PSO);
-            if (tunedParams.BO) await runModel('BO', tunedParams.BO);
+            if (tunedParams.TPE) await runModel('TPE', tunedParams.TPE);
+            if (tunedParams['CMA-ES']) await runModel('CMA-ES', tunedParams['CMA-ES']);
+            if (tunedParams.GWO) await runModel('GWO', tunedParams.GWO);
             
             setSweepResults(results);
 
@@ -100,7 +104,7 @@ export default function PageRobustness({
         const series = [];
         let xAxisData = [];
         
-        const colors = { 'Manual': '#ef4444', 'GA': '#3b82f6', 'PSO': '#10b981', 'BO': '#ec4899' };
+        const colors = { 'Manual': '#ef4444', 'GA': '#3b82f6', 'PSO': '#10b981', 'TPE': '#ec4899', 'CMA-ES': '#f59e0b', 'GWO': '#8b5cf6' };
 
         Object.keys(sweepResults).forEach(model => {
             if (!visiblePlots[model]) return;
@@ -137,13 +141,7 @@ export default function PageRobustness({
 
     return (
         <div style={{display: 'flex', flexDirection: 'column', gap: 16, height: '100%', overflowY: 'auto', paddingRight: 10}}>
-            <GlobalConfigPanel 
-                manualParams={manualParams} setManualParams={setManualParams}
-                spPitch={spPitch} setSpPitch={setSpPitch}
-                spYaw={spYaw} setSpYaw={setSpYaw}
-                simDuration={simDuration} setSimDuration={setSimDuration}
-                trajectoryType={trajectoryType} setTrajectoryType={setTrajectoryType}
-            />
+            <GlobalConfigPanel />
 
             <div className="glass-panel" style={{padding: 16, display: 'flex', flexDirection: 'column', gap: 16}}>
                 <div style={{display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap'}}>
@@ -189,8 +187,10 @@ export default function PageRobustness({
                    <button className={visiblePlots.Manual ? 'primary-btn' : 'secondary-btn'} onClick={() => setVisiblePlots({...visiblePlots, Manual: !visiblePlots.Manual})} style={{padding: '4px 12px', fontSize: 12}}>Manual</button>
                    <button className={visiblePlots.GA ? 'primary-btn' : 'secondary-btn'} onClick={() => setVisiblePlots({...visiblePlots, GA: !visiblePlots.GA})} style={{padding: '4px 12px', fontSize: 12}}>GA</button>
                    <button className={visiblePlots.PSO ? 'primary-btn' : 'secondary-btn'} onClick={() => setVisiblePlots({...visiblePlots, PSO: !visiblePlots.PSO})} style={{padding: '4px 12px', fontSize: 12}}>PSO</button>
-                   <button className={visiblePlots.BO ? 'primary-btn' : 'secondary-btn'} onClick={() => setVisiblePlots({...visiblePlots, BO: !visiblePlots.BO})} style={{padding: '4px 12px', fontSize: 12}}>BO</button>
-                   <button className="secondary-btn" onClick={() => setVisiblePlots({Manual:true, GA:true, PSO:true, BO:true})} style={{padding: '4px 12px', fontSize: 12, marginLeft: 'auto'}}>Show All</button>
+                   <button className={visiblePlots.TPE ? 'primary-btn' : 'secondary-btn'} onClick={() => setVisiblePlots({...visiblePlots, TPE: !visiblePlots.TPE})} style={{padding: '4px 12px', fontSize: 12}}>TPE</button>
+                   <button className={visiblePlots['CMA-ES'] ? 'primary-btn' : 'secondary-btn'} onClick={() => setVisiblePlots({...visiblePlots, 'CMA-ES': !visiblePlots['CMA-ES']})} style={{padding: '4px 12px', fontSize: 12}}>CMA-ES</button>
+                   <button className={visiblePlots.GWO ? 'primary-btn' : 'secondary-btn'} onClick={() => setVisiblePlots({...visiblePlots, GWO: !visiblePlots.GWO})} style={{padding: '4px 12px', fontSize: 12}}>GWO</button>
+                   <button className="secondary-btn" onClick={() => setVisiblePlots({Manual:true, GA:true, PSO:true, TPE:true, 'CMA-ES':true, GWO:true})} style={{padding: '4px 12px', fontSize: 12, marginLeft: 'auto'}}>Show All</button>
                 </div>
             )}
 

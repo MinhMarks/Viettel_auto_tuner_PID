@@ -1,15 +1,17 @@
 import React from 'react';
 import axios from 'axios';
+import { useAppContext } from '../context/AppContext';
 
 const API_BASE = 'http://localhost:8088/api';
 
-export default function GlobalConfigPanel({
-    manualParams, setManualParams,
-    spPitch, setSpPitch,
-    spYaw, setSpYaw,
-    simDuration, setSimDuration,
-    trajectoryType, setTrajectoryType
-}) {
+export default function GlobalConfigPanel() {
+    const {
+        manualParams, setManualParams,
+        spPitch, setSpPitch,
+        spYaw, setSpYaw,
+        simDuration, setSimDuration,
+        trajectoryType, setTrajectoryType,
+    } = useAppContext();
     return (
         <div style={{ display: 'flex', gap: 20, marginBottom: 20, flexShrink: 0 }}>
             {/* Simulation & Trajectory Settings */}

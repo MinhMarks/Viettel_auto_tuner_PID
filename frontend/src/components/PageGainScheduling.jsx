@@ -119,8 +119,9 @@ export default function PageGainScheduling({
     const [loading, setLoading] = useState(false);
     const [progress, setProgress] = useState(0);
     const [results, setResults] = useState(null); // stores { None, Classic, ModelBased, Fuzzy }
+    const [mimoLqrSim, setMimoLqrSim] = useState(null);
     
-    const [visiblePlots, setVisiblePlots] = useState({ None: true, Classic: true, ModelBased: true, Fuzzy: true, Target: true });
+    const [visiblePlots, setVisiblePlots] = useState({ None: true, Classic: true, ModelBased: true, Fuzzy: true, Target: true, MIMOLQR: true });
     const [disturbances, setDisturbances] = useState({ wind_torque_p: 0.01, wind_torque_y: 0.01, sensor_noise_std: 0.1, mass_payload: 1.0 });
     const [abortController, setAbortController] = useState(null);
 
@@ -143,6 +144,23 @@ export default function PageGainScheduling({
         window.currentProgressInterval = null;
 
         try {
+            // Fetch and Simulate MIMO LQR Baseline
+            try {
+                const mimoLqrParamsRes = await axios.get(`${API_BASE}/mimo_lqr_baseline`);
+                if (mimoLqrParamsRes.data && mimoLqrParamsRes.data.baseline_params) {
+                    const lqrRes = await axios.post(`${API_BASE}/simulate`, {
+                        params: mimoLqrParamsRes.data.baseline_params,
+                        setpoint_pitch: spPitch * Math.PI / 180,
+                        setpoint_yaw: spYaw * Math.PI / 180,
+                        t_max: simDuration, 
+                        disturbance_config: disturbances, 
+                        trajectory_type: trajectoryType,
+                        controller_type: 'mimo_lqr'
+                    });
+                    setMimoLqrSim(lqrRes.data);
+                }
+            } catch (e) { console.error("Failed to fetch MIMO LQR params", e); }
+
             const resData = { None: null, Classic: null, ModelBased: null, Fuzzy: null };
             
             // Helper to run simulation directly
@@ -277,12 +295,14 @@ export default function PageGainScheduling({
         }
     };
 
-    const refData = results?.None || results?.Classic;
+    const refData = results?.None || results?.Classic || mimoLqrSim;
     const timeAxis = refData ? refData.time.map(t => t.toFixed(2)) : [];
     const spPitchData = refData ? refData.sp_pitch.map(p => (p * 180 / Math.PI).toFixed(2)) : [];
     const spYawData = refData ? refData.sp_yaw.map(p => (p * 180 / Math.PI).toFixed(2)) : [];
 
+    // Main Chart Series
     const mainSeries = [];
+    if (visiblePlots.MIMOLQR && mimoLqrSim) mainSeries.push({ name: 'MIMO LQR', data: mimoLqrSim, colorP: '#eab308', colorY: '#ca8a04' });
     if (results) {
         if (visiblePlots.None && results.None) mainSeries.push({ name: 'None (PID)', data: results.None, colorP: '#9ca3af', colorY: '#d1d5db' });
         if (visiblePlots.Classic && results.Classic) mainSeries.push({ name: 'Classic GS', data: results.Classic, colorP: '#3b82f6', colorY: '#93c5fd' });
@@ -395,12 +415,13 @@ export default function PageGainScheduling({
             {/* Results Block */}
             {results && (
                 <div className="glass-panel" style={{padding: 16, display: 'flex', gap: 16, flexDirection: 'column'}}>
-                    <div style={{display:'flex', gap: 8, zIndex: 10}}>
+                    <div style={{display:'flex', gap: 8, zIndex: 10, flexWrap: 'wrap'}}>
+                        <button className={visiblePlots.MIMOLQR ? 'primary-btn' : 'secondary-btn'} onClick={() => setVisiblePlots({...visiblePlots, MIMOLQR: !visiblePlots.MIMOLQR})} style={{padding: '4px 12px', fontSize: 12}}>MIMO LQR</button>
                         <button className={visiblePlots.None ? 'primary-btn' : 'secondary-btn'} onClick={() => setVisiblePlots({...visiblePlots, None: !visiblePlots.None})} style={{padding: '4px 12px', fontSize: 12}}>None (PID)</button>
                         <button className={visiblePlots.Classic ? 'primary-btn' : 'secondary-btn'} onClick={() => setVisiblePlots({...visiblePlots, Classic: !visiblePlots.Classic})} style={{padding: '4px 12px', fontSize: 12}}>Classic GS</button>
                         <button className={visiblePlots.ModelBased ? 'primary-btn' : 'secondary-btn'} onClick={() => setVisiblePlots({...visiblePlots, ModelBased: !visiblePlots.ModelBased})} style={{padding: '4px 12px', fontSize: 12}}>Model-Based</button>
                         <button className={visiblePlots.Fuzzy ? 'primary-btn' : 'secondary-btn'} onClick={() => setVisiblePlots({...visiblePlots, Fuzzy: !visiblePlots.Fuzzy})} style={{padding: '4px 12px', fontSize: 12}}>Fuzzy Adaptive</button>
-                        <button className="secondary-btn" onClick={() => setVisiblePlots({None:true, Classic:true, ModelBased:true, Fuzzy:true, Target:true})} style={{padding: '4px 12px', fontSize: 12, marginLeft: 'auto'}}>Show All</button>
+                        <button className="secondary-btn" onClick={() => setVisiblePlots({None:true, Classic:true, ModelBased:true, Fuzzy:true, Target:true, MIMOLQR:true})} style={{padding: '4px 12px', fontSize: 12, marginLeft: 'auto'}}>Show All</button>
                     </div>
                     
                     <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>

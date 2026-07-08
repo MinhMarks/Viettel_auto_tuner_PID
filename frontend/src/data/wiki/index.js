@@ -7,6 +7,8 @@ import { gainScheduling } from './gain_scheduling';
 import { objectiveFunc } from './objective_func';
 import { limitations } from './limitations';
 
+import { algorithms } from './algorithms';
+
 export const DOCS_DATA = {
     'intro': intro,
     'control_philosophies': controlPhilosophies,
@@ -15,5 +17,6 @@ export const DOCS_DATA = {
     'auto_tuning': autoTuning,
     'gain_scheduling': gainScheduling,
     'objective_func': objectiveFunc,
+    'algorithms': algorithms,
     'limitations': limitations
 };

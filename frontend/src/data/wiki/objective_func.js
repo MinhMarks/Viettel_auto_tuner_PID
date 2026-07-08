@@ -57,6 +57,20 @@ Bằng cách điều chỉnh tỷ lệ giữa $\alpha$ (năng lượng) và $\be
    - Bộ điều khiển tuyệt đối không bao giờ được phép xuất ra dòng điện vượt quá $24V$ dù chỉ 1 milisecond, nhằm tránh cháy nổ trạm nguồn VoltPaq.
 
 ---
+<div id="tuning-profiles-section-2"></div>
+
+### Tuning Profiles cho Time-Domain Objective
+
+Ngoài hàm ITAE tổng hợp (mặc định), hệ thống còn cung cấp **Time-Domain Objective** tập trung chuyên sâu vào các chỉ tiêu thiết kế miền thời gian (Rise Time, Maximum Tracking Error/Overshoot). Hàm này cũng có 3 chế độ Tuning Profiles:
+
+1. **Balanced (Cân bằng):** $w_{itae} = 1.0, w_{mte} = 5.0, w_{rise} = 2.0, w_{saturation} = 1.0$
+   - Cân đối giữa việc đạt tốc độ đáp ứng (Rise Time) vừa phải, độ vọt lố (MTE) thấp và không quá bão hòa động cơ.
+2. **Aggressive (Bám gắt):** $w_{itae} = 1.0, w_{mte} = 3.0, w_{rise} = 6.0, w_{saturation} = 0.5$
+   - Phạt cực nặng Rise Time để ép máy bay đạt đến góc mục tiêu nhanh như chớp. Đổi lại, nới lỏng hình phạt bão hòa (Saturation) và vọt lố để cho phép hệ thống "bùng nổ" năng lượng trong giai đoạn đầu.
+3. **Conservative (Chậm mà chắc):** $w_{itae} = 1.5, w_{mte} = 8.0, w_{rise} = 0.5, w_{saturation} = 3.0$
+   - Phạt nặng mọi hành vi vọt lố và bão hòa. Hệ thống sẽ tiếp cận mục tiêu từ từ và êm ái, đảm bảo không bao giờ dao động quá đà.
+
+---
 ### Kiến Trúc Hàm Tổng Hợp Của Hệ Thống
 
 Kết hợp các lý thuyết trên, hàm mục tiêu thực tế chạy trong backend (\`objective_function.py\`) của dự án được định nghĩa như sau:
@@ -64,9 +78,25 @@ Kết hợp các lý thuyết trên, hàm mục tiêu thực tế chạy trong b
 $$ Fitness = J_1 + \\alpha \\cdot J_2 + \\beta \\cdot J_3 $$
 
 Trong đó:
-- **$J_1$ (Performance):** $\\int t \\cdot (|e_{pitch}| + |e_{yaw}|) dt$
-- **$J_2$ (Actuator Protection):** $w_{energy} \\int (V_p^2 + V_y^2) dt + w_{smoothness} \\int (\\Delta V_p^2 + \\Delta V_y^2) dt$
-- **$J_3$ (Saturation Penalty):** $w_{saturation} \\int \\max(0, |V| - 24) dt$
+- **$J_1$ (Performance):** $\\int t \\cdot (|e_{pitch}| + |e_{yaw}|) dt$ (Chuẩn hóa với $J1_{MAX} = 300.0$)
+- **$J_2$ (Actuator Protection):** $w_{energy} \\int (V_p^2 + V_y^2) dt + w_{smoothness} \\int (\\Delta V_p^2 + \\Delta V_y^2) dt$ (Chuẩn hóa với $J2_{E\\_MAX} = 11520.0$ và $J2_{S\\_MAX} = 46080.0$)
+- **$J_3$ (Saturation Penalty):** $w_{saturation} \\int \\max(0, |V| - 24) dt$ (Chuẩn hóa với $J3_{MAX} = 1000.0$)
+
+> **Ràng buộc Phá hủy (Crash Constraint):** Trong quá trình mô phỏng, nếu góc Pitch hoặc Yaw vượt quá $\\pi$ (180 độ - tương đương việc lật nhào trực thăng), hệ thống lập tức cộng **10000 điểm phạt** vào tổng Cost và ngắt mô phỏng. Thuật toán tiến hóa (như GA) sẽ lập tức đào thải các gen đột biến nguy hiểm này ở thế hệ tiếp theo.
+---
+
+### Kỹ Thuật Đưa Cost Về Đoạn [0, 1] (Squashing Technique)
+
+Mặc dù đã chuẩn hóa từng thành phần $J_1, J_2, J_3$, tổng số điểm phạt $J_{total}$ vẫn có thể lớn hơn 1 (đặc biệt khi trực thăng bị lật, bị phạt 10000 điểm). Trong Machine Learning và Tối ưu hóa, người ta thường ưu tiên Cost nằm gọn trong đoạn $[0, 1]$ để dễ so sánh chéo.
+
+Do đó, chúng ta có thể áp dụng kỹ thuật Squashing bằng hàm phân thức:
+$$ Cost_{new} = \frac{J_{total}}{J_{total} + C} $$
+Với $C$ là một hằng số tham chiếu (ví dụ $C = 50.0$). 
+- Khi $J_{total} = 0$, $Cost_{new} = 0$ (Hoàn hảo).
+- Khi $J_{total} \to \infty$ (ví dụ lật máy bay), $Cost_{new} \to 1$ (Thất bại hoàn toàn).
+
+Nhờ kỹ thuật này, đồ thị hội tụ (Convergence Chart) của bạn sẽ biểu diễn một cách tuyệt đẹp các giá trị trượt từ $1.0$ (rất tệ) tiệm cận dần về $0.0$ (tối ưu).
+
 ---
 
 ### Tài Liệu Tham Khảo (References)

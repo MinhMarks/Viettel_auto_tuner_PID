@@ -36,7 +36,7 @@ export default function PageHistory() {
         
         // Comprehensive headers
         const headers = [
-            "Experiment Name", "Timestamp", "Tuning Method", "Condition", "Algorithm", 
+            "Experiment Name", "Timestamp", "Objective Structure", "Condition", "Algorithm", 
             "Wind Pitch (Nm)", "Wind Yaw (Nm)", "Sensor Noise Std", "Payload Mass Ratio",
             "Kp_p", "Ki_p", "Kd_p", "Kp_y", "Ki_y", "Kd_y",
             "Kp_p_large", "Ki_p_large", "Kd_p_large", "Kp_y_large", "Ki_y_large", "Kd_y_large",
@@ -50,7 +50,7 @@ export default function PageHistory() {
         history.forEach(exp => {
             const expName = exp.experiment_name || "Unknown Experiment";
             const expTime = exp.timestamp ? new Date(exp.timestamp).toLocaleString() : "Unknown Time";
-            const expMethod = exp.tuning_method || "N/A";
+            const expObjType = exp.objective_type || "default_objective";
             
             if (exp.runs && Array.isArray(exp.runs)) {
                 exp.runs.forEach(run => {
@@ -62,7 +62,7 @@ export default function PageHistory() {
                     const costHist = (run.cost_history && run.cost_history.length > 0) ? `"${run.cost_history.join('|')}"` : "";
                     
                     rows.push([
-                        `"${expName}"`, `"${expTime}"`, `"${expMethod}"`, `"${run.condition || ''}"`, `"${run.algorithm || ''}"`,
+                        `"${expName}"`, `"${expTime}"`, `"${expObjType}"`, `"${run.condition || ''}"`, `"${run.algorithm || ''}"`,
                         dist.wind_torque_p ?? '', dist.wind_torque_y ?? '', dist.sensor_noise_std ?? '', dist.mass_payload ?? '',
                         p[0]??'', p[1]??'', p[2]??'', p[3]??'', p[4]??'', p[5]??'',
                         pL[0]??'', pL[1]??'', pL[2]??'', pL[3]??'', pL[4]??'', pL[5]??'',
