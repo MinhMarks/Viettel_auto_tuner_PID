@@ -14,11 +14,11 @@ os.makedirs(batch_run_dir, exist_ok=True)
 # ----------------- 1. TUNING CONFIGURATION -----------------
 objectives_and_profiles = {
     # "default_objective": ["balanced"], # "aggressive", "eco", "safety"],
-    "time_domain_objective": ["balanced", "aggressive"] # , "conservative"]
+    "time_domain_objective": [ "aggressive"] # , "conservative""balanced",]
 }
 
 controller_types = ["classic"] # , "fuzzy", "model_based"] # Các loại bộ điều khiển (không phải phương pháp Gain Scheduling)
-gs_methods = ["", "linear" ] # , "step" , "sigmoid"] # Test all Gain Scheduling methods and without GS
+gs_methods = ["linear" ] # "", "step" , "sigmoid"] # Test all Gain Scheduling methods and without GS
 
 # Base tuning disturbances
 training_disturbances = [
@@ -159,7 +159,9 @@ for i, (seed, obj, profile, c_type, gs, dist, traj) in enumerate(combinations):
                     print(f"Test Error {test_res.status_code} for {algo}")
             
             # Save Test Results to CSV
-            from experiment_logger import save_robustness_results
+            import sys
+            sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+            from core.experiment_logger import save_robustness_results
             save_robustness_results(all_test_metrics, run_dir)
             
         else:

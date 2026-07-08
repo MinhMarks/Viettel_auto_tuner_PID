@@ -35,3 +35,4 @@ frontend/yarn-error.log*
 
 # Logs
 *.log
+**/experiment_logs/

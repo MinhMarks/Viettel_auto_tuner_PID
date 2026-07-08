@@ -222,7 +222,7 @@ def save_robustness_results(all_test_metrics, run_dir):
     file_exists = os.path.exists(csv_path)
     
     with open(csv_path, mode='a', newline='', encoding='utf-8') as f:
-        fieldnames = ["Algorithm", "Tuning_Objective", "Tuning_Profile", "Controller_Type", "GS_Method", "Tuning_Disturbance", "Test_Trajectory", "Configuration", 
+        fieldnames = ["Algorithm", "Tuning_Objective", "Tuning_Profile", "Controller_Type", "GS_Method", "Tuning_Disturbance", "Test_Trajectory", "Configuration", "Seed",
                       "Disturbance_Wind_P", "Disturbance_Wind_Y", "Disturbance_Sensor_Noise", "Disturbance_Payload",
                       "Pitch_RiseTime", "Pitch_SettlingTime", "Pitch_Overshoot", "Pitch_SSE", "Pitch_CE", "Pitch_ITAE",
                       "Yaw_RiseTime", "Yaw_SettlingTime", "Yaw_Overshoot", "Yaw_SSE", "Yaw_CE", "Yaw_ITAE"]
