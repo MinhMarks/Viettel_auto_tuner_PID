@@ -21,6 +21,11 @@ class Helicopter2DOF:
         self.B_y = 0.318    # Viscous damping about yaw axis (N*m*s/rad)
         
         self.K_g = 0.326    # Gravity torque constant (N*m)
+        
+        # Center of mass and structural parameters
+        self.m = 1.0750     # Mass (kg)
+        self.l_cm = 0.0071  # Center of mass distance from origin (m)
+        self.m_lcm2_base = self.m * (self.l_cm ** 2)
     
         # Voltage limits
         self.V_max = 24.0
@@ -32,11 +37,12 @@ class Helicopter2DOF:
         self.wind_torque_y = self.disturbance_config.get("wind_torque_y", 0.0)
         self.sensor_noise_std = self.disturbance_config.get("sensor_noise_std", 0.0)
         
-        # mass_payload alters the moment of inertia
+        # mass_payload alters the moment of inertia and mass
         # Assuming payload mass increases J proportionally
         payload_ratio = self.disturbance_config.get("mass_payload", 0.0)
         self.J_p = self.J_p_base * (1.0 + payload_ratio)
         self.J_y = self.J_y_base * (1.0 + payload_ratio)
+        self.m_lcm2 = self.m_lcm2_base * (1.0 + payload_ratio)
 
     def dynamics(self, t, state, V_p, V_y):
         """
@@ -52,13 +58,22 @@ class Helicopter2DOF:
         if V_y > self.V_max: V_y = self.V_max
         elif V_y < self.V_min: V_y = self.V_min
 
-        # Non-linear equations of motion
-        # Pitch dynamics: J_p * theta_ddot = -B_p*theta_dot - K_g*cos(theta) + K_pp*V_p + K_yp*V_y + wind_torque_p
         import math
-        theta_ddot = (-self.B_p * theta_dot - self.K_g * math.cos(theta) + self.K_pp * V_p + self.K_yp * V_y + self.wind_torque_p) / self.J_p
         
-        # Yaw dynamics: J_y * psi_ddot = -B_y*psi_dot + K_py*V_p + K_yy*V_y + wind_torque_y
-        psi_ddot = (-self.B_y * psi_dot + self.K_py * V_p + self.K_yy * V_y + self.wind_torque_y) / self.J_y
+        # Effective Moments of Inertia with center of mass offset
+        J_p_eff = self.J_p + self.m_lcm2
+        J_y_eff = self.J_y + self.m_lcm2 * (math.cos(theta) ** 2)
+        
+        # Non-linear Virtual Forces (Centrifugal and Coriolis)
+        centrifugal_pitch = self.m_lcm2 * (psi_dot ** 2) * math.sin(theta) * math.cos(theta)
+        coriolis_yaw = 2.0 * self.m_lcm2 * psi_dot * theta_dot * math.sin(theta) * math.cos(theta)
+
+        # Non-linear equations of motion
+        # Pitch dynamics: (J_p + m*l_cm^2) * theta_ddot = -B_p*theta_dot - K_g*cos(theta) + K_pp*V_p + K_yp*V_y + wind_torque_p - m*l_cm^2*psi_dot^2*sin(theta)*cos(theta)
+        theta_ddot = (-self.B_p * theta_dot - self.K_g * math.cos(theta) + self.K_pp * V_p + self.K_yp * V_y + self.wind_torque_p - centrifugal_pitch) / J_p_eff
+        
+        # Yaw dynamics: (J_y + m*l_cm^2*cos^2(theta)) * psi_ddot = -B_y*psi_dot + K_py*V_p + K_yy*V_y + wind_torque_y + 2*m*l_cm^2*psi_dot*theta_dot*sin(theta)*cos(theta)
+        psi_ddot = (-self.B_y * psi_dot + self.K_py * V_p + self.K_yy * V_y + self.wind_torque_y + coriolis_yaw) / J_y_eff
 
         return [theta_dot, theta_ddot, psi_dot, psi_ddot]
 

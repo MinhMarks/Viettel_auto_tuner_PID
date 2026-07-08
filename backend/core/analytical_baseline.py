@@ -7,8 +7,16 @@ def compute_lqr_pid_baseline():
     by linearizing the 2-DOF helicopter equations around theta=0.
     """
     # Physical parameters
-    J_p = 0.0384
-    J_y = 0.0432
+    J_p_base = 0.0384
+    J_y_base = 0.0432
+    
+    m = 1.0750
+    l_cm = 0.0071
+    m_lcm2 = m * (l_cm**2)
+    
+    J_p = J_p_base + m_lcm2
+    J_y = J_y_base + m_lcm2
+    
     K_pp = 0.204
     K_yy = 0.072
     K_py = 0.0068
@@ -71,8 +79,16 @@ def compute_mimo_lqr_baseline():
     Returns a flattened list of 12 gains: [k11, k12, k13, k14, k15, k16, k21, k22, k23, k24, k25, k26].
     """
     # Physical parameters
-    J_p = 0.0384
-    J_y = 0.0432
+    J_p_base = 0.0384
+    J_y_base = 0.0432
+    
+    m = 1.0750
+    l_cm = 0.0071
+    m_lcm2 = m * (l_cm**2)
+    
+    J_p = J_p_base + m_lcm2
+    J_y = J_y_base + m_lcm2
+    
     K_pp = 0.204
     K_yy = 0.072
     K_py = 0.0068

@@ -145,3 +145,27 @@ You must strictly adhere to the following rules for every output:
   - BEST result in a column/row must be **\textbf{bold}**.
   - SECOND-BEST result must be \underline{underlined}.
 - Decimal Alignment: Format numerical values consistently.
+
+## 10. Mathematical Notation & Derivation Rules (A* Paper Standard)
+
+### 10.1 Notation Standards (ISO/IEEE)
+- **Italic lowercase** ($x, \theta, \psi$): Exclusively for scalar variables.
+- **Bold lowercase** ($\mathbf{x}, \mathbf{u}, \mathbf{y}$): Exclusively for vectors.
+- **Bold uppercase** ($\mathbf{A}, \mathbf{B}, \mathbf{Q}, \mathbf{R}$): Exclusively for matrices.
+- **Equation numbering**: All standalone equations MUST be enclosed within `\begin{equation}` and `\end{equation}` to ensure right-aligned numbering for cross-referencing.
+
+### 10.2 No Naked Variables (Domain Declaration)
+- Every variable, vector, or matrix MUST be explicitly defined with its mathematical domain ($\in \mathbb{R}^n$) immediately upon its first appearance.
+- Example: "Consider the augmented state-space model where $\mathbf{x} \in \mathbb{R}^6$ represents the state vector, and $\mathbf{u} \in \mathbb{R}^2$ denotes the control input."
+
+### 10.3 Formal Physical Assumptions
+- Physical constraints (e.g., voltage saturation, noise bounds) MUST be formalized within a `\begin{assumption}` block (or formatted as such if using raw Markdown).
+- Example: > **Assumption 1.** *The environmental wind perturbation $\mathbf{d}(t)$ is bounded such that $\|\mathbf{d}(t)\| \le d_{\max}$.*
+
+### 10.4 Mathematical Narrative Flow
+- Treat standalone equations as part of the surrounding sentence. Append a comma (,) at the end of the equation if the sentence continues (e.g., to define variables), or a period (.) if the sentence concludes.
+- **Academic Connectors:** Do not stack equations without connecting text. Use rigorous transitional phrases such as "Substituting (X) into (Y), yields...", "Differentiating with respect to...", or "By invoking Lemma 1, it follows that...".
+
+### 10.5 Linearization Rigor
+- When describing the transition from a non-linear physical model to a linear state-space representation (e.g., for LQR), you MUST explicitly formulate the first-order Taylor series expansion using Jacobian matrices around the equilibrium point $\mathbf{x}_0 = \mathbf{0}, \mathbf{u}_0 = \mathbf{0}$:
+  $$\mathbf{A} = \left. \frac{\partial f(\mathbf{x}, \mathbf{u})}{\partial \mathbf{x}} \right|_{\mathbf{x}_0, \mathbf{u}_0}, \quad \mathbf{B} = \left. \frac{\partial f(\mathbf{x}, \mathbf{u})}{\partial \mathbf{u}} \right|_{\mathbf{x}_0, \mathbf{u}_0}$$
