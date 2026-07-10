@@ -20,7 +20,7 @@ from core.metrics import calculate_metrics
 # CẤU HÌNH TRỰC QUAN HÓA (CONFIGURATION)
 # ==========================================
 # 1. Thư mục chứa dữ liệu thực nghiệm (VD: "experiment_logs/batch_20260703_064718")
-TARGET_RUN_DIR = r"../experiment_logs/batch_20260704_152204"
+TARGET_RUN_DIR = r"../experiment_logs/batch_20260708_222210"
 
 # 2. Bộ lọc (Để danh sách rỗng [] nếu muốn tự động lấy TẤT CẢ các giá trị có trong file log)
 FILTER_ALGORITHMS = ["PSO", "TPE", "CMA-ES", "GWO", "LQR Decentralized", "MIMO LQR"] # VD: ["PSO", "TPE"] hoặc để []

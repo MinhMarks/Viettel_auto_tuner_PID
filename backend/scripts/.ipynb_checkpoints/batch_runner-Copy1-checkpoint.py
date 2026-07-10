@@ -4,8 +4,8 @@ import time
 import csv
 import os
 
-URL_TUNE = "http://localhost:8088/api/compare_algorithms"
-URL_TEST = "http://localhost:8088/api/robustness_sweep"
+URL_TUNE = "http://localhost:8087/api/compare_algorithms"
+URL_TEST = "http://localhost:8087/api/robustness_sweep"
 
 from datetime import datetime
 batch_run_dir = os.path.join(os.path.dirname(__file__), 'experiment_logs', f'batch_{datetime.now().strftime("%Y%m%d_%H%M%S")}')
@@ -13,12 +13,12 @@ os.makedirs(batch_run_dir, exist_ok=True)
 
 # ----------------- 1. TUNING CONFIGURATION -----------------
 objectives_and_profiles = {
-    # "default_objective": ["balanced", "aggressive", "safety"], # "eco",  
-    "time_domain_objective": [ "aggressive" ] # , "conservative","balanced"]
+    "default_objective": ["balanced", "aggressive", "safety"], # "eco",  
+    "time_domain_objective": [ "aggressive" , "conservative","balanced"]
 }
 
-controller_types = ["classic", "model_based"] # "fuzzy",  Các loại bộ điều khiển (không phải phương pháp Gain Scheduling)
-gs_methods = ["none", "linear", "sigmoid"] # Test all Gain Scheduling methods and without GS
+controller_types = ["classic"] # , "fuzzy", "model_based"] # Các loại bộ điều khiển (không phải phương pháp Gain Scheduling)
+gs_methods = [ "linear" ] # , "sigmoid"] # Test all Gain Scheduling methods and without GS None, 
 
 # Base tuning disturbances
 training_disturbances = [
@@ -40,7 +40,7 @@ testing_config = {
     "trajectory_type": "multi-step",
     "base_disturbance_config": {"wind_torque_p": 0.01, "wind_torque_y": 0.01, "sensor_noise_std": 0.005, "mass_payload": 0.01},
     "step_increments": {"wind_torque_p": 0.01, "wind_torque_y": 0.01, "sensor_noise_std": 0.005, "mass_payload": 0.01},
-    "steps": 0, #1, 7 
+    "steps": 7, #1, 7 
     "t_max": 20.0
 }
 
@@ -68,8 +68,8 @@ for i, (seed, obj, profile, c_type, gs, dist, traj) in enumerate(combinations):
     # ----------------- PHASE 1: TUNING -----------------
     tune_payload = {
         "iters_dict": iterations,
-        "setpoint_pitch": 0.81, #0.336, #0.81, # ~25 degrees
-        "setpoint_yaw": 0.8 ,  # ~30 degrees
+        "setpoint_pitch": 0.336, #0.336, #0.81, # ~25 degrees
+        "setpoint_yaw": 0.4 ,  # ~30 degrees
         "t_max": 20.0,
         "disturbance_config": dist["config"],
         "tuning_profile": profile,
@@ -109,8 +109,8 @@ for i, (seed, obj, profile, c_type, gs, dist, traj) in enumerate(combinations):
             for algo, params in tuned_pids.items():
                 test_payload = {
                     "params": params,
-                    "setpoint_pitch": 0.81, #0.436, # 0.81, ~25 degrees
-                    "setpoint_yaw": 0.82,
+                    "setpoint_pitch": 0.336, #0.436, # 0.81, ~25 degrees
+                    "setpoint_yaw": 0.40,
                     "base_disturbance_config": testing_config["base_disturbance_config"],
                     "step_increments": testing_config["step_increments"],
                     "steps": testing_config["steps"],
@@ -156,7 +156,7 @@ for i, (seed, obj, profile, c_type, gs, dist, traj) in enumerate(combinations):
                             "Yaw_ITAE": m_yaw.get("itae", "")
                         })
                 else:
-                    print(f"Test Error {test_res.status_code} for {algo}: {test_res.text}")
+                    print(f"Test Error {test_res.status_code} for {algo}")
             
             # Save Test Results to CSV
             import sys
