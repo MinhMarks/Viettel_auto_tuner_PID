@@ -1,0 +1,647 @@
+\documentclass[conference, a4paper]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{hypertexnames=false}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage[section]{placeins}
+\usepackage{capt-of}
+\newtheorem{assumption}{Assumption}
+\newcommand{\diagramplaceholder}[2]{%
+\begin{center}
+\fbox{\begin{minipage}[c][#1][c]{0.92\columnwidth}
+\centering\small #2
+\end{minipage}}
+\end{center}}
+% Figure-quality checklist for replacing placeholders with real assets:
+% use vector PDF/SVG, white or transparent background, serif fonts aligned with
+% the manuscript, grayscale-safe markers/line styles, and mathematical variables
+% that exactly match the notation used in the equations.
+\newcommand{\figurequalitynote}{}
+\floatname{algorithm}{Thuật toán}
+
+\title{Tự Động Tinh Chỉnh Tham Số Điều Khiển Trực Thăng 2DOF Dựa Trên Thuật Toán Tối Ưu Đa Tiêu Chí}
+
+\author{\IEEEauthorblockN{Trần Lê Minh Nhật}
+\IEEEauthorblockA{\textit{Sinh viên thực hiện} \\
+\textit{UIT - University of Information and Technology} \\
+Việt Nam}
+\and
+\IEEEauthorblockN{Phạm Lê Thế Anh}
+\IEEEauthorblockA{\textit{Mentor hướng dẫn} \\
+\textit{VATC - Viettel Aviation Technology Center} \\
+anhplt@viettel.com.vn}
+}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{plain}
+\pagestyle{plain}
+\raggedbottom
+
+\begin{abstract}
+Mặc dù các thuật toán trí tuệ nhân tạo (AI) hiện đại đã thể hiện năng lực vượt trội trong việc tối ưu hóa các không gian đa chiều, quy trình tinh chỉnh tham số (tuning) cho các hệ thống hàng không (UAV, trực thăng) hiện nay vẫn bị giới hạn bởi các phương pháp tiếp cận thủ công truyền thống. Bài báo này đề xuất một nền tảng giải pháp toàn diện nhằm tự động hóa việc xác định tham số PID cho hệ thống trực thăng 2 bậc tự do (Quanser 2DOF Helicopter). Nghiên cứu này thiết lập các hàm mục tiêu đa tiêu chí (cân bằng giữa thời gian xác lập, sai số bám quỹ đạo, chi phí năng lượng và độ mượt tín hiệu), đồng thời đánh giá toàn diện hiệu năng của bốn thuật toán meta-heuristic hiện đại (PSO, GWO, CMA-ES, TPE). Kết quả thực nghiệm được phân tích chuyên sâu thông qua 3 câu hỏi nghiên cứu (RQs) tập trung vào hiệu năng cơ sở, độ bền vững trước nhiễu và hiệu quả sử dụng năng lượng. Hơn nữa, báo cáo cung cấp tài liệu kỹ thuật chi tiết hướng dẫn vận hành hệ thống phần mềm web trực quan phục vụ công tác nghiên cứu và giảng dạy thực tiễn.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Tự động hóa, Quanser 2DOF, Tối ưu hóa đa tiêu chí, Điều khiển PID, Thuật toán Meta-heuristic, Giao diện Web.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Mặc dù các thuật toán Trí tuệ Nhân tạo (AI) thể hiện năng lực vượt trội trong tối ưu hóa đa chiều, việc tự động hóa quy trình tinh chỉnh tham số (tuning) cho các hệ thống hàng không hiện nay vẫn chưa được áp dụng rộng rãi. Các mô hình như trực thăng Quanser 2-DOF sở hữu động học phi tuyến mạnh và hiện tượng tương tác chéo (cross-coupling) kênh ảnh hưởng lớn, khiến sự biến thiên tham số ở một trục ngay lập tức làm sai lệch đáp ứng của trục còn lại. Thêm vào đó, năng lực nhận thức của con người gặp rào cản lớn khi phải nhẩm tính để cân bằng đồng thời các tiêu chí mâu thuẫn như đáp ứng quá độ, độ chính xác bám quỹ đạo và năng lượng tiêu thụ. Hệ quả tất yếu là phương pháp chỉnh tay truyền thống bộc lộ ba hạn chế cốt lõi: tốn kém tài nguyên cho quá trình thử và sai kém hiệu quả, phụ thuộc hoàn toàn vào kinh nghiệm cảm tính khó tái sử dụng, và gặp khó khăn trong việc đánh giá toàn diện sự tương tác đa biến của hệ thống.
+
+Để khắc phục triệt để những giới hạn trên, nghiên cứu này triển khai thử nghiệm hệ thống tự động tinh chỉnh tham số điều khiển dựa trên đa tiêu chí và các ngữ cảnh vận hành khác nhau trên mô phỏng trực thăng Quanser 2DOF. Quá trình nghiên cứu được định hướng bởi bốn mục tiêu cốt lõi nhằm đánh giá chất lượng đáp ứng và tìm ra cấu hình tham số phù hợp nhất. Thứ nhất, thiết lập một nền tảng tự động thử nghiệm nhằm loại bỏ hoàn toàn sự can thiệp thủ công. Thứ hai, thử nghiệm và đề xuất cấu trúc hàm mục tiêu hợp lý nhằm phản ánh chính xác sự đánh đổi giữa hiệu năng và tiêu chuẩn vận hành. Thứ ba, tích hợp sự đa dạng phương pháp thông qua việc triển khai đồng thời bốn nền tảng tối ưu hóa hiện đại. Cuối cùng, tiến hành đánh giá toàn diện năng lực của hệ thống dưới nhiều kịch bản biến động và nhiễu loạn.
+
+\section{Related Work}
+\subsection{Traditional UAV Control Methods}
+Trong nhiều thập kỷ, PID (Proportional-Integral-Derivative) vẫn là giải pháp điều khiển thống trị trong công nghiệp nhờ tính đơn giản và khả năng triển khai dễ dàng. Các phương pháp kinh điển như Ziegler-Nichols (Z-N) hoặc Cohen-Coon thường được áp dụng để xác định tập tham số ban đầu~\cite{ogata2010modern, franklin2015feedback}. Tuy nhiên, các phương pháp này dựa trên giả định hệ thống là tuyến tính và loại trừ tương tác chéo, dẫn đến hệ quả là độ vọt lố (overshoot) cao và thời gian xác lập (settling time) kéo dài khi áp dụng lên các đối tượng phi tuyến như mô hình trực thăng~\cite{zhu2025design, ashari2022altitude}. Để khắc phục giới hạn tuyến tính, các chiến lược điều khiển dự báo mô hình (MPC) tiên tiến đã được đề xuất~\cite{yildiz2025dual}, tuy nhiên chúng lại đối mặt với rào cản lớn về khối lượng tính toán (computational overhead) khi triển khai trên các vi điều khiển nhúng nhịp thời gian thực.
+
+\subsection{Meta-heuristic Applications in Automatic Control}
+Sự ra đời của các nhóm thuật toán Swarm Intelligence và Evolutionary Algorithms (Meta-heuristic) đã định hình một phương pháp tiếp cận mới mẻ và hiệu quả. Các nghiên cứu gần đây đã ứng dụng mạnh mẽ Particle Swarm Optimization (PSO), Grey Wolf Optimizer (GWO)~\cite{giacomossi2022optimization, vrabel2025hybrid}, cũng như các mô hình tối ưu hóa Bayes như Tree-structured Parzen Estimator (TPE)~\cite{snoek2012practical, gu2025heteroscedastic} nhằm xác định cấu hình tham số PID tối ưu toàn cục. Dù vậy, phần lớn các công trình này chỉ tích hợp các hàm mục tiêu cơ bản như ISE (Integral Square Error) hoặc ITAE (Integral Time Absolute Error), bỏ qua các ràng buộc vận hành thực tiễn về hao phí năng lượng và tuổi thọ động cơ~\cite{vazquez2025optimal, pain2014multiobjective, goud2022pso}. Công trình nghiên cứu này giải quyết trực tiếp khoảng trống đó bằng cách thiết kế hàm mục tiêu đa tiêu chí (multi-objective function) kết hợp với quy trình kiểm định độ bền vững (robustness testing) có hệ thống.
+
+\section{System Dynamics and Methodological Rationale}
+
+\subsection{Newton-Euler Dynamics}
+Quá trình thiết lập phương trình vi phân chuyển động cho hệ thống trực thăng 2 bậc tự do (2-DOF) đòi hỏi sự kết hợp chặt chẽ giữa phân tích động học (kinematics) và khung định luật Newton-Euler nhằm phản ánh chính xác các tương tác vật lý phi tuyến. Thay vì sử dụng các phương trình xấp xỉ tuyến tính đơn giản, nghiên cứu này triển khai hệ phương trình động lực học toàn phần để bao hàm triệt để các hiệu ứng quán tính biến thiên và lực ảo. Cấu trúc trạng thái và luồng tác động của các điện áp điều khiển được minh họa chi tiết trong Hình \ref{fig:nonlinear-dynamics-diagram}, trong khi các hằng số vật lý cốt lõi cấu thành nên mô hình động lực học này được thống kê đầy đủ trong Bảng \ref{tab:quanser-2dof-system-parameters}.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[angle=90,width=0.95\columnwidth]{image/modelDiagram.pdf}
+\caption{Sơ đồ mô hình động lực học phi tuyến của Quanser 2DOF Helicopter ở trạng thái Pitch--Yaw, mô tả các biến trạng thái $\theta,\psi,\dot{\theta},\dot{\psi}$, điện áp điều khiển $V_p,V_y$, mô-men trọng lực, lực ly tâm, lực Coriolis và nhiễu gió $\boldsymbol{\tau}_{wind}$; sơ đồ làm rõ đường tác động chéo giữa hai trục trước khi thiết lập phương trình Newton--Euler được lấy từ ~\cite{8592714}.}
+\label{fig:nonlinear-dynamics-diagram}
+\end{figure}
+
+
+Để định hình không gian bài toán, xét véc-tơ trạng thái $\mathbf{x} = [\theta, \psi, \dot{\theta}, \dot{\psi}]^T \in \mathbb{R}^4$ và véc-tơ tín hiệu điều khiển $\mathbf{u} = [V_p, V_y]^T \in \mathbb{R}^2$~\cite{8592714}. Đối với trục cao độ (Pitch - $\theta$), phương trình chi phối chuyển động được thiết lập bởi sự tổng hòa của mô-men trọng lực, lực cản nhớt và tác động của cơ cấu chấp hành,
+\begin{equation}
+\begin{aligned}
+(J_p + m l_{cm}^2) \ddot{\theta} &= K_{pp} V_p + K_{py} V_y - m g l_{cm} \cos(\theta) \\
+&\quad - B_p \dot{\theta} - m l_{cm}^2 \dot{\psi}^2 \sin(\theta)\cos(\theta) + \tau_{wind\_p},
+\end{aligned}
+\end{equation}
+trong đó ma trận quán tính hiệu dụng của trục Pitch được tịnh tiến theo định lý trục song song Huygens-Steiner ($J_p + m l_{cm}^2$) nhằm phản ánh chuẩn xác sự lệch tâm của khối lượng $m \in \mathbb{R}_{>0}$, và thành phần $-m l_{cm}^2 \dot{\psi}^2 \sin(\theta)\cos(\theta)$ mô tả lực ly tâm phi tuyến có xu hướng kéo gập mũi trực thăng khi vận tốc góc Yaw ($\dot{\psi}$) gia tăng.
+
+Tương tự, trục phương vị (Yaw - $\psi$) đối mặt với một cơ chế động lực học phức tạp, nơi mô-men quán tính không còn là hằng số mà phụ thuộc chặt chẽ vào độ chúi hiện tại của góc Pitch. Bằng cách áp dụng định luật bảo toàn mô-men động lượng, phương trình chuyển động của trục Yaw được cấu trúc như sau:
+\begin{equation}
+\begin{aligned}
+(J_y + m l_{cm}^2 \cos^2(\theta)) \ddot{\psi} &= K_{yp} V_p + K_{yy} V_y - B_y \dot{\psi} \\
+&\quad + 2m l_{cm}^2 \dot{\psi}\dot{\theta} \sin(\theta)\cos(\theta) + \tau_{wind\_y}.
+\end{aligned}
+\end{equation}
+Điểm thắt cốt lõi trong phương trình này là sự xuất hiện của lực Coriolis ($2m l_{cm}^2 \dot{\psi}\dot{\theta} \sin(\theta)\cos(\theta)$), một lực ảo phi tuyến cực đoan chuyên phá vỡ tính ổn định khi máy bay thay đổi đồng thời cả hai góc quay. Hệ phương trình kép này không chỉ làm nổi bật hiện tượng tương tác chéo (cross-coupling) khốc liệt giữa hai trục tín hiệu mà còn lồng ghép trực tiếp các yếu tố nhiễu động ngoại lai. Nhằm đảm bảo tính thực tiễn của công trình, môi trường mô phỏng phải chịu sự chi phối của các giới hạn vật lý khắc nghiệt từ phần cứng:
+
+\begin{assumption}
+Véc-tơ tín hiệu điều khiển $\mathbf{u} \in \mathbb{R}^{2}$ bị chặn nghiêm ngặt bởi giới hạn bão hòa của bộ khuếch đại công suất $V_{\max}=24\text{V}$, sao cho $\|\mathbf{u}\|_{\infty} \le 24$. Đồng thời, véc-tơ nhiễu gió môi trường $\boldsymbol{\tau}_{wind}=[\tau_{wind\_p},\tau_{wind\_y}]^T \in \mathbb{R}^{2}$ được giả định bị chặn bởi một cận trên chưa biết $\tau_{\max} \in \mathbb{R}_{>0}$, bảo đảm $\|\boldsymbol{\tau}_{wind}\| \le \tau_{\max}$.
+\end{assumption}
+
+\section{Problem Formulation}
+Từ các ràng buộc động lực học và giới hạn phần cứng nêu trên, bài toán nghiên cứu được phát biểu như một bài toán tối ưu hóa hộp đen trên hệ thống điều khiển vòng kín phi tuyến. Véc-tơ trạng thái $\mathbf{x}(t) = [\theta(t), \psi(t), \dot{\theta}(t), \dot{\psi}(t)]^T \in \mathbb{R}^{4}$ mô tả cấu hình tức thời của trực thăng, véc-tơ điều khiển $\mathbf{u}(t) = [V_p(t), V_y(t)]^T \in \mathbb{R}^{2}$ biểu diễn điện áp cấp vào cơ cấu chấp hành, và véc-tơ tham chiếu $\mathbf{r}(t) = [\theta_r(t), \psi_r(t)]^T \in \mathbb{R}^{2}$ xác định quỹ đạo mong muốn. Mục tiêu cốt lõi là tìm bộ tham số PID $\boldsymbol{K} \in \Omega_K \subset \mathbb{R}^{6}$ sao cho hệ thống bám sát quỹ đạo tham chiếu trong khi vẫn kiểm soát năng lượng điều khiển, độ mượt tín hiệu và mức độ bão hòa cơ cấu chấp hành.
+
+Với mô hình phi tuyến tổng quát $\dot{\mathbf{x}}(t) = \mathbf{f}(\mathbf{x}(t),\mathbf{u}(t),\boldsymbol{\tau}_{wind}(t))$, luật điều khiển tham số hóa bởi $\boldsymbol{K}$ tạo ra ánh xạ vòng kín
+\begin{equation}
+\dot{\mathbf{x}}(t) = \mathbf{f}\big(\mathbf{x}(t),\boldsymbol{\pi}_{\boldsymbol{K}}(\mathbf{e}(t)),\boldsymbol{\tau}_{wind}(t)\big), \quad \mathbf{e}(t)=\mathbf{r}(t)-\mathbf{y}(t),
+\end{equation}
+trong đó $\boldsymbol{\pi}_{\boldsymbol{K}}(\cdot)$ là chính sách điều khiển PID sinh tín hiệu điện áp từ sai số bám quỹ đạo. Quá trình đánh giá một nghiệm $\boldsymbol{K}$ được thực thi bằng cách mô phỏng trực tiếp hệ vòng kín trong khoảng thời gian hữu hạn $t \in [0,T]$, với $T \in \mathbb{R}_{>0}$ là chân trời đánh giá. Cách phát biểu này giữ nguyên hiện tượng tương tác chéo giữa hai trục Pitch--Yaw, thay vì ép hệ thống về mô hình tuyến tính cục bộ.
+
+Do đó, bài toán tối ưu chính của nghiên cứu được định nghĩa bởi
+\begin{equation}
+\begin{aligned}
+\boldsymbol{K}^{\star} = \arg\min_{\boldsymbol{K} \in \Omega_K} \quad & \mathcal{J}(\boldsymbol{K}) \\
+\mathrm{s.t.} \quad & \dot{\mathbf{x}}(t)=\mathbf{f}(\mathbf{x}(t),\mathbf{u}(t),\boldsymbol{\tau}_{wind}(t)), \\
+& \mathbf{u}(t)=\mathrm{sat}_{24}\big(\boldsymbol{\pi}_{\boldsymbol{K}}(\mathbf{e}(t))\big), \\
+& \|\mathbf{u}(t)\|_{\infty} \le 24\text{V}, \quad \|\boldsymbol{\tau}_{wind}(t)\| \le \tau_{\max}, \\
+& \boldsymbol{K}_{\min} \preceq \boldsymbol{K} \preceq \boldsymbol{K}_{\max}, \quad \forall t \in [0,T],
+\end{aligned}
+\end{equation}
+trong đó $\mathcal{J}(\boldsymbol{K}) \in \mathbb{R}_{\ge 0}$ là hàm mục tiêu đa tiêu chí, $\boldsymbol{K}_{\min},\boldsymbol{K}_{\max} \in \mathbb{R}^{6}$ lần lượt là biên dưới và biên trên của không gian tìm kiếm, còn ký hiệu $\preceq$ biểu diễn quan hệ bất đẳng thức theo từng phần tử. Bản chất hộp đen của bài toán xuất phát từ việc $\mathcal{J}(\boldsymbol{K})$ chỉ có thể được quan sát sau một chu kỳ mô phỏng đầy đủ; vì vậy, các thuật toán meta-heuristic được sử dụng để tìm nghiệm khả thi mà không yêu cầu đạo hàm giải tích của $\mathbf{f}(\cdot)$ hoặc $\mathcal{J}(\cdot)$.
+
+Phát biểu trên dẫn tới ba tiêu chí đánh giá định lượng. Thứ nhất, sai số bám quỹ đạo phải được triệt tiêu trong cả đáp ứng quá độ và trạng thái xác lập. Thứ hai, tín hiệu điều khiển phải tránh các xung điện áp lớn gây bão hòa cơ cấu chấp hành hoặc làm tăng hao phí nhiệt. Thứ ba, nghiệm tối ưu cần duy trì độ bền vững khi nhiễu gió và nhiễu cảm biến thay đổi trong miền cho phép. Ba tiêu chí này định hướng trực tiếp cho việc thiết kế hàm mục tiêu đa tiêu chí và lựa chọn thuật toán tối ưu ở các phần tiếp theo.
+
+\section{Proposed Methodology}
+
+\subsection{Overview of the Proposed Methodological Framework}
+Để vượt qua các giới hạn nội tại của phương pháp điều khiển tuyến tính hóa cục bộ, nghiên cứu đề xuất một khung phương pháp luận tự động tinh chỉnh (Auto-Tuning framework) hoàn toàn dựa trên nền tảng tối ưu hóa phi tuyến tính (non-linear optimization). Cốt lõi của giải pháp là việc đánh giá trực tiếp hàm mục tiêu trên mô hình động lực học phi tuyến toàn phần (full non-linear dynamics) thay vì hệ xấp xỉ tuyến tính. Thay vì sử dụng phương trình đại số Riccati để tìm ma trận tăng ích như ở LQR, cấu trúc đề xuất triển khai các thuật toán tối ưu hóa Meta-heuristic để chủ động khám phá không gian tham số liên tục, nhằm xác định ma trận hằng số $\boldsymbol{K} \in \mathbb{R}^{2 \times 3}$ tối ưu nhất cho bộ điều khiển.
+
+Khung phương pháp luận này được kiến trúc xoay quanh ba trụ cột chính: (1) một cấu trúc điều khiển có tích hợp cơ chế phân đoạn tăng ích (Gain Scheduling) để triệt tiêu hiện tượng tương tác chéo (cross-coupling effect) ở nhiều vùng quỹ đạo vận hành khác nhau; (2) một hàm mục tiêu đa biến (Multi-objective cost function) định lượng chặt chẽ sự đánh đổi giữa đáp ứng quá độ (transient response), mức bão hòa cơ cấu chấp hành (actuator saturation) và tính bền vững (robustness); và (3) hệ sinh thái các thuật toán Meta-heuristic (như PSO, GWO, CMA-ES) đóng vai trò làm lõi tìm kiếm toàn cục. Sự kết hợp này hình thành một vòng lặp tối ưu hóa khép kín (closed-loop optimization), trực tiếp khắc phục hiện tượng suy giảm hiệu năng khi hệ thống đối mặt với nhiễu môi trường khốc liệt.
+
+\subsection{Overall Implementation Architecture}
+Luồng triển khai phần mềm và dữ liệu vòng kín được minh họa chi tiết trong Hình \ref{fig:system-architecture-pipeline}. Hệ thống được thiết kế theo cấu trúc phân tầng (three-tier architecture) nhằm đảm bảo tính độc lập và hiệu năng tính toán cao. Lớp mô phỏng (Simulation Layer) đảm nhiệm việc giải các hệ phương trình vi phân động lực học thông qua thuật toán Runge-Kutta (RK45) với bước thời gian tinh giản $\Delta t = 0.02s$. Phía trên đó, lớp tối ưu hóa (Optimization Layer) điều phối các thuật toán meta-heuristic để khởi tạo, đánh giá và liên tục cập nhật véc-tơ tham số $\boldsymbol{K}$ dựa trên hàm chi phí thu nhận. Cuối cùng, lớp triển khai (Deployment/API Layer) đóng gói toàn bộ lõi tính toán dưới dạng vi dịch vụ (Web Service), cung cấp khả năng trực quan hóa quá trình hội tụ và đáp ứng bước nhảy theo thời gian thực.
+
+\begin{figure}[!htbp]
+\includegraphics[width=0.95\columnwidth]{image/methodDiagram.pdf}
+\caption{Sơ đồ luồng dữ liệu của nền tảng tinh chỉnh PID tự động cho Quanser 2DOF Helicopter.}
+\label{fig:system-architecture-pipeline}
+\end{figure}
+
+\subsection{PID Controller Design}
+Kiến trúc điều khiển nền tảng của hệ thống được xây dựng trên bộ điều khiển PID (Proportional-Integral-Derivative), trong đó mỗi kênh cao độ và phương vị được điều tiết bởi một vòng phản hồi độc lập nhưng vẫn được đánh giá đồng thời trên mô hình động lực học phi tuyến. Cấu trúc này duy trì khả năng triển khai trực tiếp trên phần cứng Quanser 2DOF, đồng thời tạo ra một không gian tham số đủ nhỏ để các thuật toán tối ưu hóa có thể khảo sát hiệu quả dưới ràng buộc bão hòa cơ cấu chấp hành.
+
+Xét véc-tơ quỹ đạo tham chiếu $\mathbf{r}(t) = [\theta_{r}(t), \psi_{r}(t)]^T \in \mathbb{R}^{2}$ và véc-tơ đầu ra đo được $\mathbf{y}(t) = [\theta(t), \psi(t)]^T \in \mathbb{R}^{2}$, sai số bám quỹ đạo được định nghĩa bởi
+\begin{equation}
+\mathbf{e}(t) = \mathbf{r}(t) - \mathbf{y}(t) \in \mathbb{R}^{2}.
+\end{equation}
+Để mã hóa toàn bộ bộ điều khiển dưới dạng một nghiệm tối ưu duy nhất, véc-tơ tham số được khai báo là $\boldsymbol{K} = [K_{p}^{\theta}, K_{i}^{\theta}, K_{d}^{\theta}, K_{p}^{\psi}, K_{i}^{\psi}, K_{d}^{\psi}]^T \in \mathbb{R}^{6}$, trong đó ba hệ số đầu điều tiết kênh Pitch và ba hệ số sau điều tiết kênh Yaw. Từ đó, luật điều khiển PID rời rạc được biểu diễn dưới dạng mã giả trong Thuật toán \ref{alg:pid-closed-loop}.
+
+\begin{algorithm}[!t]
+\small
+\begin{algorithmic}[1]
+\STATE \textbf{Input:} Quỹ đạo tham chiếu $\mathbf{r}_k \in \mathbb{R}^2$, giá trị đo $\mathbf{y}_k \in \mathbb{R}^2$, ma trận tham số $\boldsymbol{K} \in \mathbb{R}^6$, chu kỳ lấy mẫu $\Delta t \in \mathbb{R}_{>0}$, giới hạn điện áp $V_{\max} = 24\mathrm{V}$
+\STATE \textbf{Initialize:} Trạng thái tích phân $\mathbf{z}_0 \leftarrow \mathbf{0}$, sai số trước đó $\mathbf{e}_{-1} \leftarrow \mathbf{0}$
+\FOR{Mỗi bước mô phỏng $k=0,1,\ldots,N$}
+    \STATE $\mathbf{e}_k \leftarrow \mathbf{r}_k - \mathbf{y}_k$
+    \STATE $\mathbf{z}_k \leftarrow \mathrm{clip}(\mathbf{z}_{k-1} + \mathbf{e}_k \Delta t, -\mathbf{z}_{\max}, \mathbf{z}_{\max})$
+    \STATE $\dot{\mathbf{e}}_k \leftarrow (\mathbf{e}_k - \mathbf{e}_{k-1}) / \Delta t$
+    \STATE $\mathbf{u}_{\mathrm{raw},k} \leftarrow \mathbf{K}_p\mathbf{e}_k + \mathbf{K}_i\mathbf{z}_k + \mathbf{K}_d\dot{\mathbf{e}}_k$
+    \STATE $\mathbf{u}_k \leftarrow \mathrm{sat}_{24}(\mathbf{u}_{\mathrm{raw},k})$
+    \STATE $\mathbf{x}_{k+1} \leftarrow \text{RK45}(\mathbf{f}, \mathbf{x}_k, \mathbf{u}_k, \Delta t)$
+    \STATE $\mathbf{e}_{k-1} \leftarrow \mathbf{e}_k$
+\ENDFOR
+\STATE \textbf{Output:} Quỹ đạo vòng kín $\mathbf{y}_{0:N}$, chuỗi điều khiển $\mathbf{u}_{0:N}$, và chi phí $\mathcal{J}(\boldsymbol{K}) \in \mathbb{R}_{\ge 0}$
+\end{algorithmic}
+\caption{Mã giả vòng điều khiển PID phân tán cho Quanser 2DOF Helicopter. Hệ thống thực thi tích phân số học RK45 qua từng chu kỳ lấy mẫu $\Delta t$, đồng thời áp dụng cơ chế bão hòa điện áp $\mathrm{sat}_{24}(\cdot)$ trước khi cấp cho cơ cấu chấp hành.}
+\label{alg:pid-closed-loop}
+\end{algorithm}
+
+\begin{equation}
+\mathbf{u}_{\mathrm{raw}}(t) = \mathbf{K}_{p}\mathbf{e}(t) + \mathbf{K}_{i}\int_{0}^{t}\mathbf{e}(\tau)d\tau + \mathbf{K}_{d}\dot{\mathbf{e}}(t) \in \mathbb{R}^{2},
+\end{equation}
+trong đó $\mathbf{K}_{p} = \mathrm{diag}(K_{p}^{\theta}, K_{p}^{\psi}) \in \mathbb{R}^{2\times2}$, $\mathbf{K}_{i} = \mathrm{diag}(K_{i}^{\theta}, K_{i}^{\psi}) \in \mathbb{R}^{2\times2}$ và $\mathbf{K}_{d} = \mathrm{diag}(K_{d}^{\theta}, K_{d}^{\psi}) \in \mathbb{R}^{2\times2}$ lần lượt là các ma trận hệ số tỉ lệ, tích phân và vi phân. Cách tham số hóa dạng đường chéo này không phủ nhận hiện tượng tương tác chéo của trực thăng; thay vào đó, toàn bộ ảnh hưởng liên kênh được giữ nguyên trong mô hình mô phỏng và được phản ánh trực tiếp thông qua giá trị của hàm mục tiêu $\mathcal{J}(\boldsymbol{K})$.
+
+Do điện áp điều khiển thực tế bị giới hạn bởi bộ khuếch đại công suất, tín hiệu cấp vào cơ cấu chấp hành được ràng buộc bằng phép chiếu bão hòa
+\begin{equation}
+\mathbf{u}(t) = \mathrm{sat}_{24}\big(\mathbf{u}_{\mathrm{raw}}(t)\big), \quad \mathrm{sat}_{24}(v)=\min\{24,\max\{-24,v\}\}.
+\end{equation}
+Ràng buộc này bảo đảm $\|\mathbf{u}(t)\|_{\infty} \le 24\text{V}$ với mọi $t \ge 0$, đồng thời buộc quá trình tối ưu hóa đánh đổi trực tiếp giữa đáp ứng quá độ, độ vọt lố, thời gian xác lập và mức tiêu thụ năng lượng. Khi bộ tham số $\boldsymbol{K}$ tạo ra tín hiệu điều khiển quá lớn, thành phần phạt bão hòa $J_3$ trong (5) sẽ làm tăng chi phí tổng, qua đó loại bỏ các cấu hình có nguy cơ gây quá tải phần cứng.
+
+Trong triển khai rời rạc với chu kỳ lấy mẫu $\Delta t \in \mathbb{R}_{>0}$, thành phần tích phân và vi phân được cập nhật theo dạng sai phân hữu hạn nhằm tương thích với lớp mô phỏng số học,
+\begin{equation}
+\mathbf{z}_{k} = \mathbf{z}_{k-1} + \mathbf{e}_{k}\Delta t, \quad \dot{\mathbf{e}}_{k} = \frac{\mathbf{e}_{k}-\mathbf{e}_{k-1}}{\Delta t},
+\end{equation}
+với $\mathbf{z}_{k} \in \mathbb{R}^{2}$ là trạng thái tích phân tại mẫu thứ $k$. Thay thế các đại lượng rời rạc này vào luật PID liên tục tạo ra tín hiệu điều khiển tại mỗi bước mô phỏng,
+\begin{equation}
+\mathbf{u}_{k} = \mathrm{sat}_{24}\left(\mathbf{K}_{p}\mathbf{e}_{k} + \mathbf{K}_{i}\mathbf{z}_{k} + \mathbf{K}_{d}\dot{\mathbf{e}}_{k}\right) \in \mathbb{R}^{2}.
+\end{equation}
+Nhờ đó, thuật toán tối ưu hóa không cần truy cập đạo hàm giải tích của mô hình phi tuyến mà chỉ cần đánh giá chuỗi đáp ứng kín sinh ra bởi từng bộ tham số $\boldsymbol{K}$.
+
+Để hạn chế hiện tượng tích lũy sai số khi cơ cấu chấp hành đi vào vùng bão hòa, trạng thái tích phân được chặn trong miền hữu hạn $\mathbf{z}_{k} \in [-\mathbf{z}_{\max},\mathbf{z}_{\max}] \subset \mathbb{R}^{2}$. Cơ chế anti-windup này ngăn thành phần tích phân tiếp tục khuếch đại điện áp trong các pha chuyển tiếp có sai số lớn, qua đó cải thiện độ bền vững của đáp ứng kín trước nhiễu gió và sai lệch mô hình. Với cấu trúc trên, bài toán thiết kế bộ điều khiển được quy về bài toán tìm kiếm
+\begin{equation}
+\boldsymbol{K}^{\star} = \arg\min_{\boldsymbol{K} \in \Omega_{K}} \mathcal{J}(\boldsymbol{K}),
+\end{equation}
+trong đó $\Omega_{K} \subset \mathbb{R}^{6}$ là miền biên của các hệ số PID khả thi và $\mathcal{J}(\boldsymbol{K})$ được lựa chọn tương ứng với mục tiêu Energy-Aware hoặc Time-Domain. Công thức này thiết lập cầu nối trực tiếp giữa thiết kế PID cổ điển và quy trình tối ưu hóa đa tiêu chí được trình bày ở phần tiếp theo.
+
+\subsection{Multi-Objective Cost Function}
+Việc kiến tạo một hàm mục tiêu đa tiêu chí đóng vai trò quyết định trong quá trình hướng dẫn các thuật toán meta-heuristic tìm kiếm bộ tham số tối ưu. Thay vì chỉ sử dụng hàm lỗi cơ bản, nghiên cứu thiết lập hai cấu trúc hàm mục tiêu riêng biệt nhằm phục vụ các chiến lược vận hành đặc thù, bao gồm việc dung hòa giữa chất lượng động học và các ràng buộc phần cứng khắt khe.
+
+\textbf{1. Energy-Aware Objective}
+
+Cấu trúc hàm mặc định được thiết kế để giải quyết bài toán tối thiểu hóa hao phí năng lượng cục bộ và triệt tiêu hiện tượng bão hòa cơ cấu chấp hành, trong khi vẫn duy trì biên độ sai số bám sát ở mức cho phép. Phương trình tổng quát được biểu diễn dưới dạng tổng có trọng số của bốn thành phần chuẩn hóa:
+\begin{equation}
+\mathcal{J}_{\text{def}}(\boldsymbol{K}) = w_{1} \frac{J_1}{J_{1,\max}} + w_{2} \frac{J_{2E}}{J_{2E,\max}} + w_{3} \frac{J_{2S}}{J_{2S,\max}} + w_{4} \frac{J_3}{J_{3,\max}}.
+\end{equation}
+Mỗi thành phần trong phương trình đại diện cho một đặc tính động lực học, với $w_1, w_2, w_3, w_4 \in \mathbb{R}_{>0}$ là các hệ số trọng số, và được chuẩn hóa thông qua hằng số cực đại $J_{\max}$ nhằm ngăn chặn hiện tượng lấn át biên độ trong quá trình tối ưu. 
+
+Thành phần đánh giá sai số bám quỹ đạo ($J_1$) ứng dụng chỉ số Tích phân Sai số Tuyệt đối theo Thời gian (ITAE) nhằm trừng phạt khắt khe các sai số tồn đọng ở giai đoạn xác lập (steady-state). Bằng cách nhân thời gian thực $t$ vào hàm tích phân, bộ điều khiển bị ép buộc phải triệt tiêu sai số một cách triệt để, qua đó giảm thiểu sự trôi dạt (drift) của thân trực thăng khi hoạt động lâu dài. 
+
+Thành phần hao phí năng lượng ($J_{2E}$) được tính toán thông qua tích phân bình phương điện áp cấp cho cơ cấu chấp hành ($\int (V_p^2 + V_y^2) dt$). Đại lượng này phản ánh trực tiếp công suất điện tiêu thụ thực tế của hệ thống. Việc tối thiểu hóa thành phần này giúp ngăn ngừa hiện tượng cấp dòng điện cực đại liên tục, qua đó kéo dài tuổi thọ của động cơ DC và giảm thiểu nguy cơ quá nhiệt trong quá trình thử nghiệm vật lý.
+
+Thành phần độ mượt điều khiển ($J_{2S}$) đóng vai trò như một cơ chế bảo vệ hệ thống cơ khí khỏi các dao động có tần số cao. Bằng cách tính toán bình phương sự biến thiên điện áp qua các chu kỳ lấy mẫu ($\int (\Delta V)^2 dt$), hàm mục tiêu áp đặt một hình phạt nặng nề lên các bước nhảy tín hiệu đột ngột. Sự điều tiết này giúp làm dịu tín hiệu đầu ra của bộ điều khiển, triệt tiêu các cú sốc cơ học (jerk) phá hủy hệ thống truyền động.
+
+Thành phần bão hòa tín hiệu ($J_3$) được thiết lập dựa trên giới hạn vật lý nghiêm ngặt của bo mạch khuếch đại điện áp ($\pm 24\text{V}$). Bất kỳ tín hiệu điều khiển thô nào vượt qua ngưỡng bão hòa này ($\max(0, |V| - 24)$) đều được cộng dồn thành một cực phạt (penalty) rất lớn trong tổng chi phí. Cơ chế ràng buộc cứng này đảm bảo rằng mọi bộ tham số được xác định bởi thuật toán tối ưu đều khả thi và có thể vận hành ổn định trong vùng tuyến tính của phần cứng thực tế.
+
+\textbf{2. Time-Domain Objective}
+
+Trái ngược với hàm mặc định, hàm miền thời gian ưu tiên tuyệt đối tốc độ bám quỹ đạo và thời gian đáp ứng đối với các ứng dụng yêu cầu sự cơ động cực đại. Phương trình được cấu trúc lại như sau:
+\begin{equation}
+\mathcal{J}_{\text{td}}(\boldsymbol{K}) = w_{1} \frac{J_1}{J_{1,\max}} + w_{\text{MTE}} \frac{J_{\text{MTE}}}{J_{\text{MTE}}^{\max}} + w_{\text{rise}} \frac{J_{\text{rise}}}{J_{\text{rise}}^{\max}},
+\end{equation}
+với $w_{\text{MTE}}, w_{\text{rise}} \in \mathbb{R}_{>0}$ là các hệ số trọng số ưu tiên. Thay vì bị giới hạn bởi hao phí năng lượng, $\mathcal{J}_{\text{td}}$ tập trung khai thác tối đa sức mạnh của cơ cấu chấp hành để giảm thiểu Sai số Bám tối đa (Maximum Tracking Error - MTE) và Thời gian tăng trưởng (Rise time). Sự kết hợp các chỉ số miền thời gian trực tiếp này tạo ra một đáp ứng động cực kỳ dứt khoát, rất phù hợp với các kịch bản bay tránh vật cản hoặc bám mục tiêu chuyển động nhanh, nơi độ an toàn vật lý quan trọng hơn mức tiêu hao nhiên liệu.
+\subsection{Overview of Optimization Algorithms}
+Quá trình tối ưu hóa bộ tham số PID được thực thi thông qua bốn thuật toán hiện đại, mỗi nền tảng sở hữu cơ chế hội tụ và chiến lược khám phá không gian chuyên biệt (xem chi tiết cơ sở toán học tại Phụ lục B). Các giải thuật Swarm Intelligence bao gồm Particle Swarm Optimization (PSO)~\cite{b3} và Grey Wolf Optimizer (GWO)~\cite{mirjalili2014grey} tập trung vào việc mô phỏng hành vi tập thể để định hướng tìm kiếm. Trong nhóm này, PSO nhấn mạnh tốc độ hội tụ cục bộ (exploitation), trong khi GWO duy trì cơ chế phân cấp Alpha--Beta--Delta nhằm cân bằng giữa exploration và exploitation. Nhằm giải quyết triệt để sự tương tác chéo (cross-coupling) khốc liệt giữa các trục của trực thăng, thuật toán Covariance Matrix Adaptation Evolution Strategy (CMA-ES)~\cite{hansen2001completely} được ưu tiên tích hợp nhờ khả năng tự động học hỏi cấu trúc không gian hiệp phương sai. Đối với nhóm thuật toán định hướng mô hình xác suất (SMBO), Tree-structured Parzen Estimator (TPE)~\cite{bergstra2011algorithms} mang lại hiệu suất mẫu (sample efficiency) tốt trong điều kiện ngân sách đánh giá hạn chế, biến thuật toán này thành công cụ phù hợp khi chi phí đánh giá hàm mục tiêu trên hệ thống mô phỏng là đắt đỏ. Các đặc tính thiết kế và định hướng phân tích kết quả cho từng thuật toán được tổng hợp trong Bảng \ref{tab:optimizer-design-matrix}.
+
+\begin{table}[!t]
+\caption{Ma trận đối chiếu đặc tính thiết kế và dạng kết quả minh họa cho các thuật toán tối ưu hóa}
+\label{tab:optimizer-design-matrix}
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.19\columnwidth}>{\raggedright\arraybackslash}p{0.24\columnwidth}>{\raggedright\arraybackslash}p{0.22\columnwidth}>{\raggedright\arraybackslash}p{0.22\columnwidth}}
+\toprule
+Thuật toán & Cơ chế chính & Điểm minh họa & Chart đề xuất \\
+\midrule
+PSO~\cite{b3} & Swarm Intelligence & Hội tụ nhanh, rủi ro cực tiểu cục bộ & Convergence curve \\
+GWO~\cite{mirjalili2014grey} & Hierarchical swarm & Cân bằng exploration--exploitation & Ranking plot \\
+CMA-ES~\cite{hansen2001completely} & Covariance adaptation & Học tương thuộc tham số & Heatmap hiệp phương sai \\
+TPE~\cite{bergstra2011algorithms} & SMBO density model & Hiệu suất mẫu trong ngân sách thấp & Sample-efficiency curve \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Experimental Setup and Scenarios}
+\subsection{Reproducibility Details}
+Môi trường tính toán được thiết lập đồng nhất nhằm đảm bảo tính toàn vẹn và khả năng tái lập (reproducibility) của dữ liệu thực nghiệm. Toàn bộ quy trình tối ưu hóa được lập trình bằng ngôn ngữ Python 3.11.6, tích hợp thư viện \texttt{scipy.integrate} để xử lý tích phân số học trên phần cứng Intel Core i5-11400H và 8GB RAM. Để thiết lập tính công bằng phương pháp luận (methodological fairness), tất cả các thuật toán đều bị giới hạn nghiêm ngặt ở ngưỡng tối đa 1000 lần đánh giá hàm mục tiêu, tương đương cấu hình quần thể 20 cá thể vận hành xuyên suốt 50 chu kỳ tiến hóa. Nhằm tạo điều kiện thuận lợi cho quá trình kiểm chứng chéo và kế thừa kết quả nghiên cứu, toàn bộ mã nguồn, cấu hình siêu tham số và kịch bản mô phỏng được công bố mở tại kho dữ liệu \url{https://github.com/MinhMarks/Viettel_auto_tuner_PID}.
+
+\subsection{Baseline Controller}
+Nhằm thiết lập một hệ quy chiếu khách quan để định lượng hiệu suất của các thuật toán Meta-heuristic, nghiên cứu tiến hành cấu hình một hệ thống điều khiển cơ sở (baseline) dựa trên phương pháp Toàn phương Tuyến tính (Linear Quadratic Regulator - LQR). Việc lựa chọn LQR làm chuẩn đối sánh xuất phát từ khả năng tối ưu hóa giải tích (analytical optimization) đã được chứng minh nội tại của phương pháp này khi hệ thống vận hành xung quanh điểm cân bằng.
+
+\textbf{MIMO LQR (12-Parameter System)}
+
+Để thiết lập giới hạn lý thuyết tối đa về khả năng triệt tiêu tương tác chéo, hệ thống cơ sở áp dụng kiến trúc phản hồi trạng thái toàn phần (full-state feedback) thông qua ma trận độ lợi LQR tiêu chuẩn. Đối với mô hình trực thăng 2DOF tích hợp khâu tích phân, không gian trạng thái bao gồm 6 biến (góc, vận tốc góc, tích phân sai số của Pitch và Yaw) và 2 tín hiệu đầu vào ($V_p, V_y$), dẫn đến ma trận phản hồi $K$ có kích thước $2 \times 6$. Mười hai thông số tương tác chéo này cho phép tín hiệu điện áp ở một trục tự động điều tiết dựa trên sự biến thiên trạng thái của trục còn lại. Mặc dù sở hữu cấu trúc toán học chặt chẽ, việc trích xuất ma trận này bắt buộc phải đi qua bước tuyến tính hóa hệ phương trình (Jacobian linearization) — một quá trình loại bỏ hoàn toàn các đặc tính phi tuyến vật lý của động cơ, qua đó tạo cơ sở vững chắc cho sự cần thiết của việc ứng dụng AI để tối ưu trực tiếp.
+
+\subsection{Evaluation Scenarios}
+Quy trình kiểm định được chia thành ba kịch bản chuyên biệt nhằm bóc tách toàn diện năng lực của các bộ điều khiển. Các kịch bản này được tổng hợp trong Bảng \ref{tab:evaluation-scenario-matrix}. Kịch bản cơ sở (Baseline) phân tích đặc tính đáp ứng bước nhảy với biên độ tham chiếu Pitch là 0.436 rad và Travel là 0.520 rad dưới điều kiện nhiễu quá trình ($\sigma_{sys} = 0.0$) và nhiễu cảm biến ($\sigma_{sensor} = 0.0$). Tiếp theo, kịch bản độ bền vững (Robustness) đẩy hệ thống tới trạng thái tới hạn bằng cách khuếch đại cường độ nhiễu quá trình theo thang tăng dần ($0.01 \to 0.02 \to \dots \to 0.07$). Cuối cùng, kịch bản cơ chế tuyến tính hóa từng vùng (Gain Scheduling) khảo sát độ ổn định trong vùng hoạt động phi tuyến biên độ cực đại ($50^\circ$), qua đó đối chiếu trực tiếp hiệu năng giữa cấu hình PID tĩnh và cơ cấu tham số động.
+
+\begin{table}[!t]
+\caption{Khung ma trận kịch bản đánh giá}
+\label{tab:evaluation-scenario-matrix}
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.20\columnwidth}>{\raggedright\arraybackslash}p{0.27\columnwidth}>{\raggedright\arraybackslash}p{0.38\columnwidth}}
+\toprule
+Kịch bản & Mục tiêu đánh giá & Chỉ số phân tích \\
+\midrule
+Baseline & Đáp ứng bước nhảy không nhiễu & Step response, rise time, độ vọt lố, sai số xác lập \\
+Robustness & Độ bền vững trước nhiễu tăng dần & Degradation curve, error band, box plot \\
+Gain Scheduling & Vùng hoạt động phi tuyến biên độ lớn & Phase portrait, heatmap ổn định, tracking error \\
+Energy & Hiệu quả sử dụng cơ cấu chấp hành & Voltage trace, energy bar chart, saturation count \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Results Analysis}
+
+\subsection{RQ1: Baseline Performance}
+Phân tích nền tảng tập trung vào khả năng kiến tạo một chu kỳ đáp ứng lý tưởng cho cơ cấu cơ điện tử. Cụ thể, năng lực của hệ thống được đánh giá qua việc đạt ngưỡng thời gian tăng trưởng (rise time) tối thiểu, triệt tiêu hoàn toàn độ vọt lố (overshoot) và duy trì sai số xác lập $e_{ss}$ tiệm cận không. 
+
+Để đảm bảo tính khách quan và toàn diện, thực nghiệm đầu tiên được tiến hành dưới kịch bản hàm mục tiêu \texttt{time\_domain\_objective}, sử dụng quỹ đạo bám nhiều bước (multi-step trajectory) kết hợp với cơ chế phân đoạn tăng ích tuyến tính (Linear Gain Scheduling). Hệ thống được đặt trong môi trường có nhiễu (mặc định config 1 với ma trận hiệp phương sai noise là $\mathrm{diag}(0.01, 0.01, 0.005, 0.01)$), và được chạy lặp lại trên nhiều seed ngẫu nhiên khác nhau để đánh giá độ tin cậy. Trọng số của hàm mục tiêu được tinh chỉnh theo cấu hình \texttt{aggressive} nhằm ép hệ thống tối ưu hóa cực đoan về mặt thời gian đáp ứng; chi tiết ý nghĩa toán học và động lực học của các quỹ đạo thử nghiệm được làm rõ tại Phụ lục C.
+
+Toàn bộ các chỉ số đo lường định lượng về hiệu năng cơ sở của các thuật toán được thống kê chi tiết trong Bảng \ref{tab:rq1-baseline-metrics}. Trong các bảng số liệu thống kê xuyên suốt mục này, thuật toán đạt hiệu năng xuất sắc nhất trên từng tiêu chí sẽ được \textbf{in đậm}, và thuật toán đạt hiệu năng bám đuổi (tốt nhì) sẽ được \underline{gạch chân}.
+
+\begin{table*}[!t]
+\caption{Hiệu năng cơ sở của các bộ điều khiển khi đánh giá trên hàm mục tiêu Time-domain (cấu hình trọng số Aggressive).}
+\label{tab:rq1-baseline-metrics}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{@{}lcccccccccccc@{}}
+\toprule
+\multirow{2}{*}{Algorithm} & \multicolumn{6}{c}{Pitch ($\theta$)} & \multicolumn{6}{c}{Yaw ($\psi$)} \\
+\cmidrule(lr){2-7} \cmidrule(l){8-13}
+ & RiseTime (s) & Settling (s) & Overshoot (\%) & SSE & CE & ITAE & RiseTime (s) & Settling (s) & Overshoot (\%) & SSE & CE & ITAE \\
+\midrule
+CMA-ES     & $1.9235 \pm 1.0$ & $1.2435 \pm 0.0$ & $32.6628 \pm 8$ & $0.0363 \pm 0.0$ & $8922.9694$ & $7.0544 \pm 1.9$ & $0.6795 \pm 0.2$ & $1.2445 \pm 0.0$ & $30.6878 \pm 6$ & $0.0261 \pm 0.0$ & $7877.8312$ & $5.8846 \pm 1.2$ \\
+GWO        & \textbf{0.0716} $\pm$ 0.0 & \textbf{0.4245} $\pm$ 0.0 & \underline{28.5366} $\pm$ 3 & \textbf{0.0159} $\pm$ 0.0 & \textbf{209.5815} & \underline{3.9337} $\pm$ 0.1 & \textbf{0.1298} $\pm$ 0.0 & \textbf{0.5422} $\pm$ 0.0 & $35.1555 \pm 4$ & $0.0300 \pm 0.0$ & \textbf{364.3428} & $5.4029 \pm 0.3$ \\
+MIMO LQR   & $0.6380 \pm 0.2$ & $2.4993 \pm 0.0$ & $44.8000 \pm 1$ & $0.0385 \pm 0.0$ & \underline{507.9204} & $5.6451 \pm 0.5$ & \underline{0.3309} $\pm$ 0.1 & $2.5000 \pm 0.0$ & $80.3088 \pm 1$ & \textbf{0.0237} $\pm$ 0.0 & \underline{1288.2403} & $6.1196 \pm 0.3$ \\
+PSO        & \underline{0.2818} $\pm$ 0.1 & \underline{0.5324} $\pm$ 0.0 & \textbf{21.4851} $\pm$ 3 & \underline{0.0204} $\pm$ 0.0 & $3798.4938$ & \textbf{3.4004} $\pm$ 0.5 & $0.3558 \pm 0.1$ & $1.4322 \pm 0.0$ & \textbf{25.0725} $\pm$ 5 & \underline{0.0247} $\pm$ 0.0 & $5055.1878$ & \textbf{4.9251} $\pm$ 0.8 \\
+TPE        & $0.7238 \pm 0.6$ & $0.6432 \pm 0.0$ & $32.2170 \pm 9$ & $0.0285 \pm 0.0$ & $6232.0496$ & $4.9271 \pm 1.5$ & $0.3349 \pm 0.1$ & \underline{0.8523} $\pm$ 0.0 & \underline{28.4439} $\pm$ 1 & $0.0377 \pm 0.0$ & $4950.6170$ & \underline{5.2400} $\pm$ 1.2 \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}
+
+\begin{table*}[!t]
+\caption{Hiệu năng cơ sở của các bộ điều khiển khi đánh giá trên hàm mục tiêu Time-domain (cấu hình trọng số Conservative).}
+\label{tab:rq1-baseline-conservative}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{@{}lcccccccccccc@{}}
+\toprule
+\multirow{2}{*}{Algorithm} & \multicolumn{6}{c}{Pitch ($\theta$)} & \multicolumn{6}{c}{Yaw ($\psi$)} \\
+\cmidrule(lr){2-7} \cmidrule(l){8-13}
+ & RiseTime (s) & Settling (s) & Overshoot (\%) & SSE & CE & ITAE & RiseTime (s) & Settling (s) & Overshoot (\%) & SSE & CE & ITAE \\
+\midrule
+CMA-ES     & $1.9107 \pm 1.6$ & $1.1265 \pm 0.0$ & $29.8371 \pm 1$ & $0.0235 \pm 0.0$ & $9082.8664$ & $6.8019 \pm 2.9$ & $0.8780 \pm 0.4$ & $1.2344 \pm 0.0$ & \underline{27.0167} $\pm$ 6 & $0.0279 \pm 0.0$ & $9049.7011$ & $6.2995 \pm 1.4$ \\
+GWO        & \textbf{0.0716} $\pm$ 0.0 & \textbf{0.4354} $\pm$ 0.0 & $28.6966 \pm 3$ & \textbf{0.0158} $\pm$ 0.0 & \textbf{207.7081} & \underline{3.9626} $\pm$ 0.1 & \textbf{0.1307} $\pm$ 0.0 & \textbf{0.5354} $\pm$ 0.0 & $34.3842 \pm 4$ & $0.0288 \pm 0.0$ & \textbf{379.8618} & \underline{5.3298} $\pm$ 0.4 \\
+MIMO LQR   & $0.6380 \pm 0.2$ & $0.6432 \pm 0.0$ & $44.8000 \pm 1$ & $0.0385 \pm 0.0$ & \underline{507.9204} & $5.6451 \pm 0.5$ & \underline{0.3309} $\pm$ 0.1 & \underline{0.8673} $\pm$ 0.0 & $80.3088 \pm 1$ & \underline{0.0237} $\pm$ 0.0 & \underline{1288.2403} & $6.1196 \pm 0.3$ \\
+PSO        & \underline{0.3062} $\pm$ 0.1 & $2.4993 \pm 0.0$ & \textbf{22.4052} $\pm$ 4 & \underline{0.0230} $\pm$ 0.0 & $3894.8019$ & \textbf{3.5143} $\pm$ 0.7 & $0.3311 \pm 0.1$ & $2.5000 \pm 0.0$ & \textbf{23.2963} $\pm$ 5 & \textbf{0.0207} $\pm$ 0.0 & $4372.4787$ & \textbf{4.5364} $\pm$ 0.5 \\
+TPE        & $0.8913 \pm 1.1$ & \underline{0.5654} $\pm$ 0.0 & \underline{26.8807} $\pm$ 5 & $0.0266 \pm 0.0$ & $5944.0158$ & $5.0080 \pm 2.7$ & $0.3971 \pm 0.2$ & $1.3992 \pm 0.0$ & $28.2993 \pm 1$ & $0.0265 \pm 0.0$ & $5660.5652$ & $5.6535 \pm 2.2$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}
+
+\begin{table*}[!t]
+\caption{Hiệu năng cơ sở của các bộ điều khiển khi đánh giá trên hàm mục tiêu Energy-aware (cấu hình trọng số Safety).}
+\label{tab:rq1-baseline-energy-safety}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{@{}lcccccccccccc@{}}
+\toprule
+\multirow{2}{*}{Algorithm} & \multicolumn{6}{c}{Pitch ($\theta$)} & \multicolumn{6}{c}{Yaw ($\psi$)} \\
+\cmidrule(lr){2-7} \cmidrule(l){8-13}
+ & RiseTime (s) & Settling (s) & Overshoot (\%) & SSE & CE & ITAE & RiseTime (s) & Settling (s) & Overshoot (\%) & SSE & CE & ITAE \\
+\midrule
+CMA-ES     & $1.9995 \pm 1.3$ & $1.1143 \pm 0.0$ & $29.0617 \pm 8$ & \textbf{0.0224} $\pm$ 0.0 & $9028.8080$ & $7.0527 \pm 2.5$ & $1.0093 \pm 0.2$ & $1.1354 \pm 0.0$ & $30.5041 \pm 5$ & $0.0346 \pm 0.0$ & $9321.4360$ & $6.9337 \pm 1.0$ \\
+GWO        & \textbf{0.4965} $\pm$ 0.1 & \textbf{0.3945} $\pm$ 0.0 & $27.3002 \pm 5$ & \underline{0.0244} $\pm$ 0.0 & \underline{1748.2075} & \underline{4.5601} $\pm$ 0.7 & \underline{0.3856} $\pm$ 0.0 & \textbf{0.5144} $\pm$ 0.0 & $34.8901 \pm 6$ & $0.0305 \pm 0.0$ & \textbf{816.4778} & $6.9889 \pm 1.2$ \\
+MIMO LQR   & \underline{0.6380} $\pm$ 0.2 & $2.4993 \pm 0.0$ & $44.8000 \pm 1$ & $0.0385 \pm 0.0$ & \textbf{507.9204} & $5.6451 \pm 0.5$ & \textbf{0.3309} $\pm$ 0.1 & $2.5000 \pm 0.0$ & $80.3088 \pm 1$ & \textbf{0.0237} $\pm$ 0.0 & \underline{1288.2403} & $6.1196 \pm 0.3$ \\
+PSO        & $0.6600 \pm 0.3$ & \underline{0.5354} $\pm$ 0.0 & \textbf{22.4281} $\pm$ 2 & $0.0254 \pm 0.0$ & $6407.2183$ & \textbf{3.7182} $\pm$ 0.4 & $0.6616 \pm 0.1$ & $1.3882 \pm 0.0$ & \underline{28.0492} $\pm$ 3 & \underline{0.0287} $\pm$ 0.0 & $7669.7219$ & \textbf{5.7676} $\pm$ 0.8 \\
+TPE        & $1.7473 \pm 2.1$ & $0.6212 \pm 0.0$ & \underline{25.7557} $\pm$ 6 & $0.0282 \pm 0.0$ & $8486.1462$ & $5.1307 \pm 1.9$ & $0.6555 \pm 0.2$ & \underline{0.8601} $\pm$ 0.0 & \textbf{27.7927} $\pm$ 3 & $0.0384 \pm 0.0$ & $8504.3068$ & \underline{6.0792} $\pm$ 0.7 \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}
+
+
+\subsection{RQ2: Gain Scheduling Architecture Evaluation}
+Cơ chế tuyến tính hóa từng vùng (Gain Scheduling) được thiết kế nhằm khắc phục tính phi tuyến toàn cục của hệ thống khi vận hành ở các quỹ đạo có biên độ cực đại. Thực nghiệm thứ hai đánh giá chuyên sâu hiệu năng bám quỹ đạo của thuật toán GWO (lựa chọn đại diện nhờ sự cân bằng ổn định giữa exploration và exploitation) trên 5 cấu trúc điều khiển khác nhau: không sử dụng Gain Scheduling (\texttt{W/O GS} - tĩnh), và 4 biến thể có Gain Scheduling bao gồm sự kết hợp giữa kiến trúc cơ sở (\texttt{classic}, \texttt{model\_based}) và hàm chuyển đổi (\texttt{linear}, \texttt{sigmoid}).
+
+Sự tối ưu hóa được đánh giá trực tiếp qua hàm mục tiêu tích phân sai số thời gian tuyệt đối (ITAE) trên cả hai trục Pitch và Yaw, với số liệu trung bình được trích xuất qua nhiều hạt giống ngẫu nhiên (random seeds). Kết quả đối chiếu định lượng được thống kê trong Bảng \ref{tab:rq2-gain-scheduling-metrics} (tại Phụ lục E) và trực quan hóa qua Hình \ref{fig:rq2-gain-scheduling-chart}.
+
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.82\textwidth]{image/chart_gs_comparison.pdf}
+\caption{Phân phối sai số ITAE (thông qua nhiều hạt giống ngẫu nhiên) trên các cấu trúc phân đoạn tăng ích (Gain Scheduling) trong dải hoạt động phi tuyến biên độ $50^\circ$.}
+\label{fig:rq2-gain-scheduling-chart}
+\end{figure*}
+
+Phân tích số liệu chỉ ra rằng việc áp dụng cấu trúc \texttt{model\_based} kết hợp với hàm chuyển tiếp phi tuyến \texttt{sigmoid} mang lại hiệu quả triệt tiêu sai số tối ưu nhất, vượt qua cấu hình tĩnh tiêu chuẩn. Đáng chú ý, các hàm chuyển đổi tuyến tính (\texttt{linear}) không đem lại sự cải thiện rõ rệt, nhấn mạnh tầm quan trọng của tính trơn tru và độ nhạy cục bộ mà hàm sigmoid cung cấp trong việc đối phó với hiện tượng tương tác chéo (cross-coupling effect).
+
+
+\subsection{RQ3: Robustness Against Contamination}
+Năng lực duy trì tính ổn định trước các biến thiên ngẫu nhiên của môi trường (nhiễu quá trình và nhiễu cảm biến) là thước đo quyết định chất lượng của bất kỳ bộ điều khiển nào. Thực nghiệm thứ ba đánh giá độ bền vững (robustness) bằng cách tăng dần mức độ nhiễu theo 7 cấu hình (Configurations) từ dễ đến khó nhất. Chỉ số sai số tích phân tuyệt đối trên trục Pitch (Pitch ITAE) được trích xuất qua nhiều hạt giống ngẫu nhiên (random seeds) nhằm vẽ ra phổ phân phối độ suy giảm hiệu năng (degradation curve) dưới cùng một điều kiện hàm mục tiêu tĩnh.
+
+Dữ liệu định lượng chi tiết cho từng cấu hình nhiễu được thống kê trong Bảng \ref{tab:rq3-robustness-metrics} (tại Phụ lục E) và sự gia tăng vùng bất định thống kê (shaded confidence band) được trực quan hóa trong Hình \ref{fig:rq3-robustness-degradation}.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.95\columnwidth]{image/chart_robustness_pitch.pdf}
+\caption{Độ bền vững của các bộ điều khiển theo cường độ nhiễu gió tăng dần (Conf 1 đến Conf 7). Đường biểu diễn là giá trị trung bình (mean), vùng đổ bóng tương ứng với độ lệch chuẩn (standard deviation) qua 15 lần chạy độc lập.}
+\label{fig:rq3-robustness-degradation}
+\end{figure}
+
+
+Theo dõi đường cong suy giảm hiệu năng, tất cả các thuật toán đều duy trì sai số bám quỹ đạo thấp tại điều kiện lý tưởng (Conf 1). Tuy nhiên, sự phân hóa bắt đầu diễn ra mạnh mẽ kể từ mức nhiễu Conf 4. Tại cấu hình nhiễu khắc nghiệt nhất (Conf 7), thuật toán GWO khẳng định tính bền vững vượt trội với chỉ số ITAE thấp nhất ($29.11$) đi kèm với vùng bất định hẹp nhất, cho thấy khả năng kháng nhiễu cực kỳ ổn định nhờ cơ chế phân cấp Alpha-Beta-Delta chặt chẽ. Bộ điều khiển MIMO LQR cũng thể hiện một sự suy giảm tuyến tính ổn định ($53.29$), xếp hạng nhì nếu xét về độ co hẹp của vùng phân phối, chứng minh nền tảng toán học vững chắc của nó trước các biến thiên nhiễu loạn. Ngược lại, CMA-ES lại bộc lộ sự đứt gãy nghiêm trọng với sai số vọt lên mức $106.90$ cùng dải phân tán khổng lồ, biến nó trở thành phương pháp mẫn cảm nhất với sự không chắc chắn của mô hình vật lý.
+
+\subsection{RQ4: Cross-Coupling Suppression Analysis}
+Để đánh giá toàn diện khả năng kiểm soát hiện tượng tương tác chéo (cross-coupling effect) — một trong những thách thức cốt lõi của hệ phi tuyến nhiều đầu vào nhiều đầu ra (MIMO), thực nghiệm thứ tư tiến hành so sánh trực tiếp hiệu năng giữa phương pháp điều khiển toàn phương tuyến tính (MIMO LQR) và nền tảng AI-PID (GWO). Mặc dù kiến trúc phân tán (Decoupled PID) của AI-PID khi kết hợp với Gain Scheduling đã cải thiện đáng kể khả năng đáp ứng, nó vẫn phải đối mặt với giới hạn cấu trúc khi thiếu đi ma trận phản hồi trạng thái toàn phần (full-state feedback) vốn là ưu điểm nội tại của MIMO LQR. Phân tích bám quỹ đạo đa bước (Multi-step Trajectory Tracking) được thực hiện nhằm lượng hóa mức độ ảnh hưởng qua lại giữa hai trục Pitch và Yaw.
+
+Kết quả định lượng được tổng hợp chi tiết trong Bảng \ref{tab:rq4-cross-coupling-metrics} và đối chiếu trực quan thông qua đồ thị đáp ứng bước nhảy ở Hình \ref{fig:rq4-cross-coupling-chart}.
+
+\begin{table}[!t]
+\caption{Đối chiếu RMSE và sai số tối đa giữa MIMO LQR và AI-PID (GWO).}
+\label{tab:rq4-cross-coupling-metrics}
+\centering
+\small
+\begin{tabular}{llcc}
+\toprule
+Trục đánh giá & Metric & MIMO LQR & AI-PID (GWO) \\
+\midrule
+\multirow{2}{*}{Pitch ($\theta$)} & RMSE (rad) & \textbf{0.2765} & $0.3213$ \\
+ & Max Error (rad) & \textbf{1.7074} & $1.8016$ \\
+\midrule
+\multirow{2}{*}{Yaw ($\psi$)} & RMSE (rad) & \textbf{0.0394} & $0.0581$ \\
+ & Max Error (rad) & \textbf{0.1198} & $0.1949$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\columnwidth]{image/scenario2_multi_step_state.pdf}
+\caption{Đáp ứng động học tương tác chéo dưới tác động của quỹ đạo bay góc lớn. Hình trái: Quỹ đạo tham chiếu (nét đứt đen) và đáp ứng bám của trục Pitch. Hình phải: Sai lệch sinh ra trên trục Yaw do tương tác chéo. So sánh đối chứng giữa MIMO LQR (đường liền) và AI-PID GWO (đường nét đứt).}
+\label{fig:rq4-cross-coupling-chart}
+\end{figure}
+Quan sát số liệu thực nghiệm, MIMO LQR thể hiện khả năng ức chế tương tác chéo vượt trội với chỉ số RMSE của trục Yaw đạt $0.0394$ rad so với mức $0.0581$ rad của AI-PID. Tương tự, độ lệch cực đại (Max Error) trên trục Yaw của LQR cũng được kiểm soát ở mức $0.1198$ rad, thấp hơn đáng kể so với kiến trúc phân tán. Điều này minh chứng cho giá trị của ma trận độ lợi phản hồi trạng thái toàn phần trong việc chủ động điều tiết điện áp bù trừ chéo. Tuy nhiên, AI-PID vẫn duy trì khả năng bám quỹ đạo mượt mà và không đòi hỏi quá trình tuyến tính hóa mô hình phức tạp (Jacobian linearization), tạo nên một sự đánh đổi (trade-off) đáng giá trong các ứng dụng công nghiệp.
+
+\section{Ablation Study}
+
+\subsection{Phân tích động học hội tụ (Convergence Dynamics Analysis)}
+Để bóc tách rủi ro rơi vào cực tiểu cục bộ (local optima) và đánh giá tốc độ hội tụ thực tế, nghiên cứu tiến hành phân tích đường cong hội tụ (convergence curve) của bốn thuật toán Meta-heuristic (CMA-ES, GWO, PSO, TPE) trên cùng một bề mặt hàm mục tiêu tĩnh. Quá trình theo dõi giá trị hàm chi phí tốt nhất (Best Cost) được ghi nhận liên tục xuyên suốt $75$ vòng lặp (iterations) và trực quan hóa dưới dạng thang đo Log (Log Scale) nhằm làm nổi bật sự khác biệt về biên độ ở các vòng lặp cuối. Về mặt định lượng, giá trị hàm mục tiêu hội tụ tốt nhất (Best Cost) ghi nhận được lần lượt là: GWO ($0.2197$), TPE ($0.2629$), PSO ($0.3832$) và CMA-ES ($0.6102$).
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\columnwidth]{image/chart_convergence.pdf}
+\caption{Đường cong hội tụ trung bình của các thuật toán Meta-heuristic (CMA-ES, GWO, PSO, TPE) qua 75 chu kỳ tiến hóa (trục tung biểu diễn hàm mục tiêu ở thang đo log). Vùng đổ bóng đại diện cho khoảng tin cậy (confidence interval).}
+\label{fig:ablation-convergence-curve}
+\end{figure}
+
+Phân tích hình thái đường cong ở Hình \ref{fig:ablation-convergence-curve} chỉ ra rằng thuật toán GWO vượt trội tuyệt đối cả về tốc độ lẫn chất lượng nghiệm cuối cùng. Thuật toán này thiết lập trạng thái bão hòa (plateau) tiệm cận mức lý tưởng ($0.2197$) chỉ sau xấp xỉ 10 vòng lặp, đồng thời duy trì dải phân tán cực hẹp, minh chứng cho năng lực khai thác (exploitation) vùng tối ưu rất sắc bén. Ở vị trí thứ hai, TPE ($0.2629$) thể hiện đặc tính hội tụ theo bậc thang (step-wise descent) đặc trưng của các phương pháp tối ưu hóa siêu tham số, nhưng đòi hỏi một lượng lớn vòng lặp hơn để từ từ thu hẹp vùng bất định thống kê. Ngược lại, CMA-ES ghi nhận mức chi phí hội tụ kém nhất ($0.6102$) đi kèm vùng phân tán khổng lồ trong suốt tiến trình. Hành vi trồi sụt này phản ánh trực tiếp sự mất định hướng của ma trận hiệp phương sai khi phải liên tục cập nhật trong một không gian tham số bị chi phối bởi hiện tượng tương tác chéo (cross-coupling) phi tuyến gắt gao.
+
+\subsection{Phân tích tập nghiệm Pareto (Pareto Front Analysis)}
+Để làm rõ bản chất đánh đổi (trade-off) nội tại giữa chất lượng bám quỹ đạo và hao phí tài nguyên điều khiển, nghiên cứu tiến hành trích xuất ranh giới Pareto (Pareto Front) cho hai mục tiêu xung đột cốt lõi: sai số bám trục Pitch (Pitch ITAE) và năng lượng tiêu thụ bù trừ tương tác chéo trên trục Yaw (Yaw Energy). Việc phân tích tập nghiệm tối ưu Pareto không chỉ minh chứng cho tính đa mục tiêu phức hợp của hệ thống mà còn cung cấp cơ sở định lượng vững chắc để nhà thiết kế thiết lập hệ số trọng số phù hợp với từng kịch bản vận hành.
+
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\columnwidth]{image/nsga2_pareto_front_2d.pdf}
+\caption{Ranh giới Pareto (Pareto Front) minh họa sự đánh đổi (trade-off) giữa sai số bám quỹ đạo trục Pitch (ITAE) và hao phí năng lượng trục Yaw của tập hợp các nghiệm không bị áp đảo (non-dominated solutions).}
+\label{fig:pareto-front}
+\end{figure}
+
+Phân tích cấu trúc phân bố của các nghiệm trên Hình \ref{fig:pareto-front} bộc lộ rõ hình thái đường cong dạng chữ L (L-shaped curve), một đặc trưng kinh điển cho các bài toán tối ưu hóa đa mục tiêu có sự xung đột gắt gao. Tại vùng cự biên bên trái của đồ thị (điển hình là Nghiệm 9 với Pitch ITAE đạt mức siêu thấp $0.0009$), hệ thống đã vắt kiệt tối đa sức mạnh của cơ cấu chấp hành để ép sai số bám tiệm cận mức lý tưởng, dẫn đến sự bùng nổ không thể kiểm soát của hao phí năng lượng (Yaw Energy vọt thẳng lên mức đỉnh $0.0192$). Trái ngược hoàn toàn, tại vùng cự biên bên phải (điển hình là Nghiệm 8), thuật toán áp dụng chiến lược điều khiển bảo thủ (conservative strategy), chủ động hy sinh một phần độ chính xác bám quỹ đạo (Pitch ITAE tăng nhẹ lên $0.0012$) để đổi lấy hiệu quả tiết kiệm năng lượng cực đoan (Yaw Energy rớt xuống vùng đáy chỉ còn $0.0004$). 
+
+Điểm uốn (knee point) của ranh giới Pareto quy tụ các cụm nghiệm trung dung (như Nghiệm 5 hoặc Nghiệm 6) mang lại sự cân bằng hài hòa nhất (balanced trade-off). Đây là các nghiệm mục tiêu thường được khuyến nghị ưu tiên trích xuất khi triển khai bộ điều khiển lên phần cứng vật lý, nhằm giải quyết triệt để sự tương tác chéo mà không vô tình kích hoạt hiện tượng bão hòa nhiệt của bo mạch khuếch đại dòng điện.
+\section{Conclusion and Future Work}
+\subsection{Conclusion}
+Báo cáo giải quyết trọn vẹn bài toán tự động tinh chỉnh tham số điều khiển cho hệ thống điện tử hàng không phức tạp. Việc tích hợp mô hình phi tuyến Quanser 2-DOF Helicopter với các thuật toán tối ưu thông minh (GWO, PSO) giúp loại bỏ hoàn toàn phương pháp thử-sai thủ công. Kết quả chứng minh bộ tham số do AI tạo ra vượt trội MIMO LQR ở mọi chỉ tiêu định lượng (thời gian xác lập, vọt lố, năng lượng) và cực kỳ bền vững trước nhiễu động. Đi kèm giao diện phần mềm trực quan, nghiên cứu đã chuẩn hóa thành công quy trình thiết kế, đáp ứng hoàn hảo mục tiêu đề tài.
+\subsection{Limitations and Future Work}
+Mặc dù hệ thống mô phỏng hiện tại đã cung cấp các kết quả khả quan, song vẫn tồn tại một số hạn chế cốt lõi cần khắc phục khi chuyển giao công nghệ lên phần cứng vật lý (Hardware-in-the-Loop):
+\begin{itemize}
+    \item \textbf{Incomplete Physical Model:} Mô hình động lực học hiện tại chủ yếu tập trung vào ma sát nhớt (viscous damping). Trên thực tế, động cơ DC luôn tồn tại ma sát tĩnh (Coulomb/Dry friction) và vùng chết tín hiệu (Deadzone). Việc thiếu hụt các thành phần này có thể dẫn tới sai số xác lập hoặc hiện tượng dao động cục bộ (limit cycles) do khâu Tích phân (I) bị dồn nén.
+    \item \textbf{Actuator Delay and Hardware Noise:} Việc nâng cấp hàm mục tiêu đa tiêu chí theo hướng Pareto (như áp dụng thuật toán NSGA-II) thay vì Weighted Sum kết hợp với việc bổ sung điều khiển tiền định (Feed-forward control) để triệt tiêu hiện tượng tương tác chéo (cross-coupling) sẽ là trọng tâm phát triển trong giai đoạn tiếp theo.
+\end{itemize}
+
+\nocite{*}
+\bibliographystyle{elsarticle-num}
+\bibliography{references}
+
+\appendices
+\section{Overview of System Modeling Methods (Appendix A)}
+Quá trình xây dựng mô hình toán học cho các hệ thống cơ điện tử phức tạp như trực thăng 2DOF có thể được tiếp cận thông qua nhiều khung lý thuyết (theoretical frameworks) khác biệt. Phụ lục này cung cấp một khảo lược ngắn gọn về các phương pháp luận cốt lõi:
+
+\subsection{Newton-Euler Method}
+Cách tiếp cận kinh điển nhất dựa trên định luật II Newton ($\sum F = ma$) và định luật Euler cho chuyển động quay. Phương pháp này đòi hỏi việc phân tích chi tiết toàn bộ các véc-tơ lực và mô-men nội tại (bao gồm cả lực liên kết) tác dụng lên từng vật thể tự do (free-body diagram) trong không gian ba chiều. Mặc dù mang lại cái nhìn trực quan về mặt cơ học, phương pháp Newton-Euler nhanh chóng trở nên cồng kềnh và dễ dẫn đến sai sót tính toán khi áp dụng cho các hệ thống nhiều bậc tự do có ràng buộc cấu trúc phức tạp.
+
+\subsection{Euler-Lagrange Method}
+Trái ngược với phân tích véc-tơ của Newton-Euler, phương pháp Euler-Lagrange tiếp cận hệ thống dưới góc độ năng lượng vô hướng (scalar energy). Bằng cách thiết lập hàm Lagrange $L = T - P$ (hiệu số giữa động năng và thế năng), mô hình động lực học được triết xuất thông qua phương trình đạo hàm riêng. Điểm ưu việt của phương pháp này là khả năng tự động triệt tiêu các lực liên kết lý tưởng, giúp đơn giản hóa đáng kể quá trình thiết lập mô hình cho các cơ cấu đa khớp. Hệ phương trình vi phân phi tuyến thu được bảo toàn toàn vẹn các đặc tính ly tâm và Coriolis, làm nền tảng vững chắc cho quá trình tối ưu hóa.
+
+\subsection{Hamiltonian Mechanics}
+Được phát triển như một phép biến đổi Legendre từ cơ học Lagrange, cơ học Hamilton mô tả hệ thống thông qua các biến trạng thái là tọa độ suy rộng (generalized coordinates) và xung lượng suy rộng (generalized momenta). Hàm Hamilton $H$ thường đại diện cho tổng năng lượng của hệ thống. Khung lý thuyết này đặc biệt hữu ích trong lý thuyết điều khiển phi tuyến nâng cao (điều khiển Passivity-based) và phân tích sự ổn định năng lượng, dù hiếm khi được sử dụng trực tiếp để tổng hợp các bộ điều khiển PID kinh điển.
+
+\subsection{Phương trình Kane (Kane's Equations)}
+Phương pháp Kane kết hợp ưu điểm của cả Newton-Euler (hiệu năng tính toán cao) và Euler-Lagrange (triệt tiêu lực liên kết). Việc sử dụng các "tốc độ suy rộng" (generalized speeds) và "lực suy rộng" (generalized forces) giúp phương trình Kane rất tối ưu cho việc lập trình giải tích số học thuật toán trên máy tính. Đây là lựa chọn chuẩn mực cho các hệ thống robot nhiều bậc tự do hoặc mô phỏng động lực học đa vật (multibody dynamics) có độ phức tạp quy mô lớn.
+
+\subsection{Nguyên lý Gauss về Ràng buộc Tối thiểu (Gauss's Principle)}
+Nguyên lý Gauss thiết lập rằng chuyển động thực tế của một hệ thống có ràng buộc luôn là chuyển động giảm thiểu tối đa sự sai lệch so với quỹ đạo tự do của nó dưới cùng một hệ lực tác dụng. Đây là một nguyên lý vi phân biến phân (differential variational principle) mạnh mẽ, thường được ứng dụng để giải quyết các hệ thống cơ học có ràng buộc không holonomic (non-holonomic constraints) hoặc khi cần cấu trúc phương trình động lực học ở dạng ma trận phục vụ tính toán song song.
+
+\subsection{Black-box Data-Driven Modeling}
+Khác biệt hoàn toàn với 5 phương pháp dựa trên cơ học vật lý (physics-based) nêu trên, mô hình hóa hộp đen sử dụng các kỹ thuật Học máy (Machine Learning) và Nhận dạng hệ thống (System Identification) để ánh xạ trực tiếp mối quan hệ giữa tín hiệu đầu vào và đầu ra mà không yêu cầu kiến thức tiên nghiệm về cấu trúc cơ khí nội tại. Mặc dù loại bỏ được hoàn toàn sự phức tạp toán học, mô hình Data-Driven yêu cầu khối lượng dữ liệu thực nghiệm khổng lồ, thiếu đi khả năng diễn giải vật lý (physical interpretability) và đặc biệt dễ bị suy giảm hiệu năng khi hệ thống vận hành bên ngoài vùng dữ liệu huấn luyện (out-of-distribution).
+
+\subsection{Numerical Integration via RK45}
+Sự tồn tại của các hàm lượng giác và các biến trạng thái nhân chéo ($\dot{\psi}^2, \dot{\psi}\dot{\theta}$) cho thấy hệ phương trình (1) và (2) không tồn tại lời giải giải tích (analytical solution) dạng đóng. Do đó, việc ứng dụng các phương pháp mô phỏng số học (numerical simulation) là bắt buộc. Khác với phương pháp Euler truyền thống có sai số tích lũy lớn, nghiên cứu này triển khai thuật toán Runge-Kutta bậc 4/5 (RK45) để trực tiếp giải phương trình vi phân phi tuyến~\cite{fehlberg1969low,dormand1980family}. 
+
+Tại mỗi bước thời gian $\Delta t$, thuật toán RK45 ước lượng quỹ đạo hệ thống thông qua việc tính toán 4 độ dốc trung gian $\mathbf{k}_1, \mathbf{k}_2, \mathbf{k}_3, \mathbf{k}_4 \in \mathbb{R}^4$. Quá trình nội suy trạng thái tiếp theo $\mathbf{x}_{n+1}$ được thực hiện qua phép trung bình có trọng số,
+\begin{equation}
+\mathbf{x}_{n+1} = \mathbf{x}_n + \frac{\Delta t}{6} (\mathbf{k}_1 + 2\mathbf{k}_2 + 2\mathbf{k}_3 + \mathbf{k}_4),
+\end{equation}
+giúp triệt tiêu hoàn toàn sai số cắt cụt (truncation error) lên đến đa thức bậc 4. Hơn nữa, cơ chế thích nghi bậc 5 (Dormand-Prince) ngầm định tính toán thêm một độ dốc $\mathbf{k}_5$ để đánh giá sai số giữa hai bậc, qua đó tự động thu hẹp bước thời gian $\Delta t$ khi máy bay thực hiện các thao tác cơ động gắt gao nhằm tránh hiện tượng phân kỳ. Khả năng bảo toàn năng lượng và quỹ đạo dài hạn của RK45 cung cấp một môi trường mô phỏng độ chính xác cao (high-fidelity) cho bộ điều khiển Meta-heuristic.
+
+\begin{table*}[h!]
+\caption{Parameters of the Quanser 2DOF helicopter system~\cite{apkarian2012user}}
+\label{tab:quanser-2dof-system-parameters}
+\centering
+\small
+\begin{tabular}{p{0.13\textwidth}p{0.55\textwidth}p{0.15\textwidth}p{0.09\textwidth}}
+\toprule
+Symbol & Description & Value & Unit \\
+\midrule
+$l_{cm}$ & Distance between the pivot point and the center of mass of the helicopter & 0.186 & m \\
+$m_{heli}$ & Total moving mass of the helicopter, including body and propeller assemblies & 1.3872 & kg \\
+$J_{eq,p}$ & Total moment of inertia about the pitch axis & 0.0384 & kg\,$\mathrm{m}^{2}$ \\
+$J_{eq,y}$ & Total moment of inertia about the yaw axis & 0.0432 & kg\,$\mathrm{m}^{2}$ \\
+$g$ & Acceleration due to gravity on Earth & 9.81 & m\,$\mathrm{s}^{-2}$ \\
+$K_{pp}$ & Thrust torque constant acting on pitch axis from pitch motor/propeller & 0.204 & N\,m/V \\
+$K_{yy}$ & Thrust torque constant acting on yaw axis from yaw motor/propeller & 0.072 & N\,m/V \\
+$K_{py}$ & Thrust torque constant acting on pitch axis from yaw motor/propeller & 0.0068 & N\,m/V \\
+$K_{yp}$ & Thrust torque constant acting on yaw axis from pitch motor/propeller & 0.0219 & N\,m/V \\
+$B_{eq,p}$ & Equivalent viscous damping about pitch axis & 0.800 & N/V \\
+$B_{eq,y}$ & Equivalent viscous damping about yaw axis & 0.318 & N/V \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\section{In-depth Analysis of Optimization Algorithms (Appendix B)}
+Phụ lục này trình bày cơ sở toán học và cơ chế vận hành của bốn thuật toán tối ưu hóa được triển khai trong nghiên cứu, tập trung đánh giá năng lực giải quyết không gian tham số phi tuyến của mô hình Quanser 2DOF.
+
+\subsection{Particle Swarm Optimization (PSO)}
+PSO là một thuật toán Swarm Intelligence mô phỏng hành vi sinh học trong không gian nhiều chiều. Mỗi cá thể đại diện cho một nghiệm dự tuyển $\boldsymbol{K} \in \mathbb{R}^6$, di chuyển thông qua việc cập nhật véc-tơ vận tốc dựa trên vị trí tối ưu cục bộ của chính nó ($p_{best}$) và vị trí tối ưu toàn cục của toàn bầy ($g_{best}$). Nhờ cơ chế bám sát thông tin toàn cục, PSO thể hiện tốc độ hội tụ (exploitation) cực kỳ mạnh mẽ trong giai đoạn đầu. Tuy nhiên, đặc tính này đồng thời khiến thuật toán dễ bị mắc kẹt tại các cực tiểu cục bộ (premature convergence) nếu bề mặt hàm chi phí $\mathcal{J}$ xuất hiện nhiều cấu trúc đa đỉnh (multi-modal) phức tạp.
+
+\subsection{Grey Wolf Optimizer (GWO)}
+Bổ sung cho PSO, GWO là một giải thuật meta-heuristic lấy cảm hứng từ cấu trúc phân cấp và hành vi săn mồi của loài sói xám. Thuật toán duy trì ba cá thể lãnh đạo ưu tú nhất (Alpha, Beta, Delta) nhằm định hướng quá trình tìm kiếm cho toàn bộ phần còn lại của quần thể (Omega). Cơ chế phân cấp này thiết lập một trạng thái cân bằng động lực học xuất sắc giữa năng lực khám phá và khai thác. Đối với bài toán tinh chỉnh PID phân tán, GWO chứng minh khả năng tiệm cận vùng nghiệm tối ưu với độ ổn định cao, đồng thời hạn chế tối đa nguy cơ phân kỳ so với các thuật toán Swarm Intelligence truyền thống.
+
+\subsection{Covariance Matrix Adaptation Evolution Strategy (CMA-ES)}
+CMA-ES đại diện cho lớp thuật toán tối ưu ngẫu nhiên (stochastic optimization) tiên tiến, hoạt động dựa trên cơ chế ước lượng phân phối chuẩn đa biến. Bằng cách cập nhật liên tục ma trận hiệp phương sai (covariance matrix), CMA-ES tự động học hỏi và mô hình hóa cấu trúc hình học của hàm mục tiêu, qua đó nhận diện chính xác sự tương thuộc (dependencies) giữa các biến số. Đặc tính này mang lại lợi thế tuyệt đối khi xử lý hiệu ứng tương tác chéo (cross-coupling) khốc liệt giữa kênh Pitch và Yaw, xác lập CMA-ES như một công cụ giải quyết bài toán phi tuyến với độ tin cậy vượt trội.
+
+\subsection{Tree-structured Parzen Estimator (TPE)}
+Thuộc nhóm thuật toán tối ưu hóa siêu tham số dựa trên mô hình định hướng (Sequential Model-Based Optimization - SMBO), TPE thay thế mô hình phân phối chuẩn bằng các bộ ước lượng mật độ nhân (Kernel Density Estimators) dạng cây. Thuật toán phân chia không gian nghiệm thành hai nhóm (hiệu năng cao và thấp) và tối đa hóa chỉ số Cải thiện Kỳ vọng (Expected Improvement - EI). Nhờ khả năng xử lý mượt mà các biến cấu trúc, TPE vận hành đặc biệt hiệu quả trong điều kiện ngân sách tính toán (computational budget) hạn hẹp, tối ưu hóa triệt để chi phí tài nguyên (sample efficiency).
+
+\subsection{Non-dominated Sorting Genetic Algorithm II (NSGA-II)}
+Non-dominated Sorting Genetic Algorithm II (NSGA-II) đóng vai trò là nền tảng tham chiếu trong việc giải quyết các bài toán tối ưu hóa đa mục tiêu, đặc biệt trong những bối cảnh mà các tiêu chí thiết kế tồn tại sự xung đột sâu sắc, ví dụ bám sát quỹ đạo nhanh nhưng vẫn phải tiết kiệm năng lượng. Khác biệt với các thuật toán đơn mục tiêu vốn phải gộp chung các tiêu chí thành một hàm trọng số duy nhất (Weighted Sum Method), NSGA-II duy trì sự phân tách độc lập của từng hàm chi phí cấu thành. Thuật toán này vận hành dựa trên cơ chế sắp xếp không bị thống trị (non-dominated sorting), qua đó phân lớp quần thể thành các bề mặt Pareto (Pareto fronts) với thứ bậc ưu tiên giảm dần. Nhằm bảo tồn tính đa dạng sinh học trong quá trình tiến hóa và triệt tiêu nguy cơ hội tụ cục bộ, NSGA-II tích hợp thêm toán tử khoảng cách đám đông (crowding distance), đảm bảo các cá thể được phân bố đồng đều dọc theo không gian đường cong tối ưu. Đặc tính này mang lại một tập nghiệm đa dạng thay vì một điểm cực tiểu duy nhất, trực tiếp hỗ trợ kỹ sư hệ thống lựa chọn cấu hình đánh đổi (trade-off) phù hợp nhất với các ràng buộc vận hành thực tế mà không cần thiết lập và thực thi lại toàn bộ quy trình giả lập.
+
+\section{Trajectory Profiles (Appendix C)}
+Phụ lục này làm rõ ý nghĩa động lực học và toán học của các cấu hình quỹ đạo (trajectory profiles) được sử dụng làm tín hiệu tham chiếu $\mathbf{r}(t)$ trong quá trình đánh giá và tối ưu hóa hệ thống, nhằm kiểm chứng toàn diện năng lực của các bộ tham số PID dưới các điều kiện vận hành khác biệt.
+
+\subsection{Multi-step Trajectory}
+Trái ngược với phép thử bước nhảy đơn lẻ (single step response) vốn chỉ phản ánh được động học của hệ thống tại một điểm làm việc duy nhất, \textbf{Multi-step Trajectory} (quỹ đạo bám nhiều bước) là một chuỗi các xung vuông liên tiếp với biên độ và chu kỳ thay đổi theo thời gian. Cấu hình này buộc bộ điều khiển phải liên tục điều chỉnh và phục hồi từ các trạng thái chuyển tiếp (transient states) khác nhau. Nó kiểm chứng khắt khe tính ổn định toàn cục và năng lực của cơ chế Gain Scheduling khi hệ thống buộc phải di chuyển qua lại giữa nhiều phân đoạn hoạt động phi tuyến.
+
+\subsection{Aggressive Profile}
+Cấu hình \textbf{Aggressive} đại diện cho kịch bản vận hành khắc nghiệt nhất. Trong profile này, các bước nhảy biên độ (amplitude steps) có độ lớn cực đại và thời gian duy trì ngắn, tạo ra yêu cầu thay đổi trạng thái đột ngột. Cấu hình này cố tình đẩy tín hiệu điều khiển $\mathbf{u}_{\mathrm{raw}}$ lên ngưỡng cực hạn, dễ dàng kích hoạt hiện tượng bão hòa cơ cấu chấp hành (actuator saturation) tại $\pm 24\mathrm{V}$ và khuếch đại tối đa hiệu ứng tương tác chéo (cross-coupling) giữa kênh Pitch và Yaw. Mục đích cốt lõi của Aggressive profile là để phơi bày các điểm yếu về độ vọt lố (overshoot) và năng lực triệt tiêu nhiễu của thuật toán.
+
+\subsection{Smooth Profile}
+Đóng vai trò đối trọng, cấu hình \textbf{Smooth} sử dụng các tín hiệu tham chiếu biến thiên nội suy mềm mại (ví dụ: sóng hình sin hoặc bước nhảy có bộ lọc thông thấp - low-pass filtered steps). Profile này loại bỏ các cú sốc động lực học, qua đó tập trung đánh giá sai số bám sát ở trạng thái xác lập (steady-state error) và khả năng tối ưu hóa vi chỉnh điện áp. Đây là môi trường lý tưởng để kiểm chứng sự tinh tế của hàm mục tiêu Energy-Aware, nơi tín hiệu điều khiển cần được duy trì ở mức năng lượng tối thiểu mà không gây ra hiện tượng rung lắc (chattering).
+
+\section{System Architecture and Deployment (Appendix D)}
+Hệ thống giao diện người dùng đóng vai trò như một phòng thí nghiệm số hóa (digital twin), cho phép tương tác và đánh giá thuật toán theo thời gian thực. Khác với các hệ thống mô phỏng truyền thống chỉ vận hành cục bộ bằng script Python, kiến trúc hiện tại được thiết kế theo luồng dữ liệu (data flow) khép kín phục vụ triển khai thực tiễn. Ở tầng lõi, thư viện \texttt{scipy.integrate} giải quyết các phương trình động lực học Euler-Lagrange. Tầng Backend được xây dựng bằng \textbf{FastAPI}, đóng gói toàn bộ mô hình thành các API RESTful tốc độ cao. Cuối cùng, tầng Frontend ứng dụng \textbf{React (Vite)} để kết xuất đồ thị trực quan và tiếp nhận cấu hình từ người dùng.
+
+\subsection{Backend and Model Optimization}
+Nhằm đáp ứng yêu cầu khắt khe về thời gian thực thi khi hệ thống vận hành với bước nhảy mô phỏng cực nhỏ ($\Delta t = 0.002s$), kiến trúc mô phỏng và tối ưu hóa đã được tái cấu trúc toàn diện để đạt hiệu năng tối đa:
+\begin{itemize}
+    \item \textbf{Hot-Code Optimization:} Việc sử dụng các hàm cấp cao như \texttt{scipy.integrate.solve\_ivp} bộc lộ độ trễ đáng kể trong các vòng lặp cố định. Do đó, thuật toán Runge-Kutta (RK4) đã được lập trình thủ công (custom loop) để triệt tiêu hoàn toàn "overhead" tính toán. Bên cạnh đó, các thao tác ma trận phức tạp và hàm \texttt{np.clip} của thư viện NumPy trong đoạn mã "nóng" (hot code) được thay thế hoàn toàn bằng các biến vô hướng (scalar) và câu lệnh điều kiện nguyên thủy của Python. Sự tinh giản này giúp tốc độ đánh giá một hàm mục tiêu tăng tốc lên gấp 3.2 lần.
+    \item \textbf{Parallel Execution:} Thay vì đánh giá các cá thể trong quần thể một cách tuần tự, toàn bộ các giải thuật Meta-heuristic đã được nâng cấp lên kiến trúc xử lý song song. Cụ thể, kiến trúc \texttt{ProcessPoolExecutor} được áp dụng cho PSO và GWO, trong khi Optuna (TPE, CMA-ES) được cấu hình tận dụng tối đa 100\% tài nguyên lõi CPU đa luồng (\texttt{n\_jobs=-1}). Sự kết hợp này mang lại hiệu suất gia tăng đột phá từ 20 đến 50 lần so với phiên bản gốc.
+\end{itemize}
+
+\subsection{Software Platform Deployment}
+\begin{verbatim}
+# Khởi tạo tiến trình Backend (Port 8088)
+cd backend && pip install -r requirements.txt
+python main.py
+
+# Khởi tạo giao diện Frontend (Port 3088)
+cd frontend && npm install && npm run dev
+\end{verbatim}
+
+\subsection{Visual Interface Operations (Hướng dẫn vận hành)}
+Quá trình tương tác và mô phỏng trên nền tảng Web được thực hiện theo quy trình chuẩn sau nhằm tự động hóa toàn bộ quy trình từ khâu thiết lập thông số đến khâu kết xuất báo cáo:
+
+\subsubsection{Điều kiện cần}
+\begin{itemize}
+    \item Hệ thống Backend (FastAPI) và Frontend (React) đã được khởi động thành công và kết nối qua luồng dữ liệu thời gian thực.
+\end{itemize}
+
+\subsubsection{Các bước thực hiện}
+\begin{enumerate}
+    \item \textbf{Cấu hình hàm mục tiêu:} Lựa chọn chiến lược hàm mục tiêu tại thẻ \textbf{[Objective Function]} (ví dụ: Energy-Aware, Time-Domain).
+    \item \textbf{Thiết lập thuật toán:} Nhập số vòng lặp tối đa vào trường \texttt{max\_iterations} và lựa chọn mô hình thuật toán tương ứng (PSO, CMA-ES, v.v.).
+    \item \textbf{Thực thi tối ưu:} Nhấn nút lệnh \textbf{[Run Optimization]} để kích hoạt quy trình mô phỏng vòng kín.
+\end{enumerate}
+
+\subsubsection{Kết quả kỳ vọng}
+\begin{itemize}
+    \item Đồ thị tiến trình hội tụ (Convergence) được truyền tải trực tiếp (streaming) lên màn hình nhằm cung cấp nhận thức thời gian thực. 
+    \item Khi quy trình khép lại, hệ thống sẽ kết xuất tự động đồ thị đáp ứng bước nhảy cùng bảng thông số kỹ thuật (Rise time, Energy) để phục vụ công tác đối chiếu định lượng chuyên sâu.
+\end{itemize}
+
+\subsubsection{Xử lý sự cố}
+\begin{itemize}
+    \item \textbf{Lỗi mất kết nối hệ thống:} Trong trường hợp đồ thị không truyền tải dữ liệu, cần kiểm tra lại kết nối Port 8088 và đảm bảo không có tường lửa (firewall) chặn luồng dữ liệu WebSocket.
+\end{itemize}
+
+
+\section{Detailed Experimental Data Tables (Appendix E)}
+Phụ lục này thống kê toàn bộ các bảng số liệu chi tiết phục vụ cho mục đích tham chiếu chéo (cross-reference) trong phần phân tích kết quả thực nghiệm (Results Analysis) ở nội dung chính. Các số liệu được đo đạc và tổng hợp từ nhiều chu kỳ tiến hóa ngẫu nhiên nhằm đảm bảo tính toàn vẹn thống kê.
+
+\begin{table}[h!]
+\caption{Sự suy giảm hiệu năng (Pitch ITAE) theo cường độ nhiễu.}
+\label{tab:rq3-robustness-metrics}
+\centering
+\small
+\begin{tabular}{lccccccc}
+\toprule
+Thuật toán & Conf 1 & Conf 2 & Conf 3 & Conf 4 & Conf 5 & Conf 6 & Conf 7 \\
+\midrule
+CMA-ES & $5.48$ & $15.93$ & $27.61$ & $52.08$ & $61.55$ & $73.75$ & $106.90$ \\
+GWO & $3.89$ & $7.80$ & $12.16$ & $15.92$ & $20.01$ & $23.93$ & \textbf{29.11} \\
+MIMO LQR & $5.71$ & $10.96$ & $17.05$ & $24.43$ & $33.03$ & $42.68$ & \underline{53.29} \\
+PSO & $3.68$ & $9.09$ & $17.11$ & $24.86$ & $37.49$ & $48.28$ & $56.94$ \\
+TPE & $3.84$ & $11.00$ & $19.80$ & $33.13$ & $46.04$ & $62.09$ & $68.13$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{center}
+\small
+\captionof{table}{Hiệu năng của các cấu trúc phân đoạn tăng ích (GWO).}
+\label{tab:rq2-gain-scheduling-metrics}
+\begin{tabular}{lcc}
+\toprule
+Cấu trúc điều khiển & Pitch ITAE & Yaw ITAE \\
+\midrule
+W/O GS (Tĩnh) & $0.0266$ & $0.0573$ \\
+Classic + Linear & $0.0265$ & $0.0576$ \\
+Classic + Sigmoid & \underline{0.0244} & \underline{0.0548} \\
+Model-based + Linear & $0.0266$ & $0.0601$ \\
+Model-based + Sigmoid & \textbf{0.0237} & \textbf{0.0433} \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.35\baselineskip}
+
+\captionof{table}{Chi tiết các nghiệm tối ưu trên ranh giới Pareto giữa Pitch ITAE và Yaw Energy.}
+\label{tab:pareto-front-metrics}
+\begin{tabular}{lcc}
+\toprule
+Nghiệm (Solution) & Pitch ITAE & Yaw Energy \\
+\midrule
+Nghiệm 1 & $0.0010$ & $0.0181$ \\
+Nghiệm 2 & $0.0010$ & $0.0012$ \\
+Nghiệm 3 & $0.0010$ & $0.0016$ \\
+Nghiệm 4 & $0.0010$ & $0.0021$ \\
+Nghiệm 5 & $0.0011$ & $0.0010$ \\
+Nghiệm 6 & $0.0010$ & $0.0011$ \\
+Nghiệm 7 & $0.0011$ & $0.0008$ \\
+Nghiệm 8 & $0.0012$ & $0.0004$ \\
+Nghiệm 9 & $0.0009$ & $0.0192$ \\
+Nghiệm 10 & $0.0011$ & $0.0008$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

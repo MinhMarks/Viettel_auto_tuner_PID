@@ -19,11 +19,15 @@ Thumbs.db
 
 # Python / Backend
 backend/venv/
-backend/__pycache__/
-backend/*.pyc
+**/__pycache__/
+**/*.pyc
 backend/.env
 *.sqlite3
+scratch*.py
 
+# Generated Plots & Reports
+backend/visualization/plots/
+backend/report.log
 # Node / Frontend
 frontend/node_modules/
 frontend/dist/
@@ -35,3 +39,4 @@ frontend/yarn-error.log*
 
 # Logs
 *.log
+**/experiment_logs/

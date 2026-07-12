@@ -144,6 +144,7 @@ function HelicopterModel({ pitch, yaw, targetPitch, targetYaw }) {
 export default function Helicopter3D({ pitch, yaw, targetPitch, targetYaw }) {
   return (
     <Canvas camera={{ position: [5, 6, 8], fov: 50 }}>
+      <color attach="background" args={['#f1f5f9']} />
       {/* PBR Environment for realistic reflections */}
       <Environment preset="city" />
       <ambientLight intensity={0.4} />
@@ -152,7 +153,7 @@ export default function Helicopter3D({ pitch, yaw, targetPitch, targetYaw }) {
       <HelicopterModel pitch={pitch} yaw={yaw} targetPitch={targetPitch} targetYaw={targetYaw} />
       
       {/* Floor Grid */}
-      <Grid infiniteGrid fadeDistance={40} sectionColor="#444" cellColor="#222" cellThickness={1.0} sectionThickness={2.0} />
+      <Grid infiniteGrid fadeDistance={40} sectionColor="#cbd5e1" cellColor="#e2e8f0" cellThickness={1.0} sectionThickness={2.0} />
       
       {/* Soft Contact Shadows on the floor */}
       <ContactShadows position={[0, 0, 0]} opacity={0.6} scale={15} blur={2.5} far={4} />

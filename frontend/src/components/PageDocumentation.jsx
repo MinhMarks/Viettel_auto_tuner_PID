@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useAppContext } from '../context/AppContext';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -6,10 +7,8 @@ import 'katex/dist/katex.min.css';
 
 import { DOCS_DATA } from '../data/wiki';
 
-export default function PageDocumentation({ activeDoc: externalActiveDoc, setActiveDoc: externalSetActiveDoc }) {
-    const [localActiveDoc, setLocalActiveDoc] = useState('intro');
-    const activeDoc = externalActiveDoc || localActiveDoc;
-    const setActiveDoc = externalSetActiveDoc || setLocalActiveDoc;
+export default function PageDocumentation() {
+    const { wikiDoc: activeDoc, setWikiDoc: setActiveDoc } = useAppContext();
 
     return (
         <div style={{ display: 'flex', height: '100%', border: '1px solid #333', borderRadius: 8, overflow: 'hidden' }}>
@@ -65,6 +64,12 @@ export default function PageDocumentation({ activeDoc: externalActiveDoc, setAct
                                     style={{ padding: '6px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 13, background: activeDoc === 'gain_scheduling' ? 'rgba(167, 139, 250, 0.2)' : 'transparent', color: activeDoc === 'gain_scheduling' ? '#a78bfa' : '#ccc' }}
                                     onClick={() => setActiveDoc('gain_scheduling')}
                                 >{DOCS_DATA['gain_scheduling'].title}</div>
+                            </li>
+                            <li style={{ marginTop: 4 }}>
+                                <div
+                                    style={{ padding: '6px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 13, background: activeDoc === 'algorithms' ? 'rgba(167, 139, 250, 0.2)' : 'transparent', color: activeDoc === 'algorithms' ? '#a78bfa' : '#ccc' }}
+                                    onClick={() => setActiveDoc('algorithms')}
+                                >{DOCS_DATA['algorithms'].title}</div>
                             </li>
                             <li style={{ marginTop: 4 }}>
                                 <div

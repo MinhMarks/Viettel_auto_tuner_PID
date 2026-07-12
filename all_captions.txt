@@ -1,0 +1,18 @@
+Caption 1: Sơ đồ mô hình động lực học phi tuyến của Quanser 2DOF Helicopter ở trạng thái Pitch--Yaw, mô tả các biến trạng thái $\theta,\psi,\dot{\theta
+Caption 2: Sơ đồ luồng dữ liệu của nền tảng tinh chỉnh PID tự động cho Quanser 2DOF Helicopter.
+Caption 3: Mã giả vòng điều khiển PID phân tán cho Quanser 2DOF Helicopter. Hệ thống thực thi tích phân số học RK45 qua từng chu kỳ lấy mẫu $\Delta t$, đồng thời áp dụng cơ chế bão hòa điện áp $\mathrm{sat
+Caption 4: Ma trận đối chiếu đặc tính thiết kế và dạng kết quả minh họa cho các thuật toán tối ưu hóa
+Caption 5: Khung ma trận kịch bản đánh giá
+Caption 6: Hiệu năng cơ sở của các bộ điều khiển khi đánh giá trên hàm mục tiêu Time-domain (cấu hình trọng số Aggressive).
+Caption 7: Hiệu năng cơ sở của các bộ điều khiển khi đánh giá trên hàm mục tiêu Time-domain (cấu hình trọng số Conservative).
+Caption 8: Hiệu năng cơ sở của các bộ điều khiển khi đánh giá trên hàm mục tiêu Energy-aware (cấu hình trọng số Safety).
+Caption 9: Phân phối sai số ITAE trên các cấu trúc phân đoạn tăng ích (Gain Scheduling) trong dải hoạt động phi tuyến biên độ $50^\circ$. Boxplot biểu diễn mức độ phân tán qua nhiều hạt giống (seeds), trong đó đường biên của hộp chỉ ra khoảng tứ phân vị và các điểm rời rạc là giá trị ngoại lai.
+Caption 10: Độ bền vững của các bộ điều khiển theo cường độ nhiễu gió tăng dần (Conf 1 đến Conf 7). Đường liền và nét đứt biểu diễn giá trị trung bình (mean), trong khi vùng đổ bóng (shaded region) minh họa độ lệch chuẩn (standard deviation) qua 15 lần chạy độc lập. Màu sắc và định dạng nét vẽ (marker) phân tách riêng biệt cho từng thuật toán (CMA-ES, GWO, MIMO LQR, PSO, TPE) như được liệt kê trong chú thích (legend).
+Caption 11: Đối chiếu RMSE và sai số tối đa giữa MIMO LQR và AI-PID (GWO).
+Caption 12: Đáp ứng động học tương tác chéo dưới tác động của quỹ đạo bay góc lớn. Hình trái: Quỹ đạo tham chiếu (nét đứt đen) và đáp ứng bám của trục Pitch. Hình phải: Sai lệch sinh ra trên trục Yaw do tương tác chéo. So sánh đối chứng giữa MIMO LQR (đường liền) và AI-PID GWO (đường nét đứt).
+Caption 13: Đường cong hội tụ trung bình của các thuật toán Meta-heuristic (CMA-ES, GWO, PSO, TPE) qua 75 chu kỳ tiến hóa. Trục tung biểu diễn giá trị hàm mục tiêu (log scale). Vùng đổ bóng mờ đại diện cho khoảng tin cậy (confidence interval) nhằm minh họa độ ổn định của quá trình tìm kiếm.
+Caption 14: Ranh giới Pareto (Pareto Front) sinh bởi thuật toán tối ưu đa mục tiêu. Trục hoành biểu diễn sai số bám quỹ đạo trục Pitch (ITAE), trục tung biểu diễn hao phí năng lượng trục Yaw. Các điểm phân tán là tập hợp các nghiệm không bị tối ưu áp đảo (non-dominated solutions), minh họa sự đánh đổi (trade-off) giữa hai tiêu chí cơ lý.
+Caption 15: Parameters of the Quanser 2DOF helicopter system~\cite{apkarian2012user
+Caption 16: Sự suy giảm hiệu năng (Pitch ITAE) theo cường độ nhiễu.
+Caption 17: Hiệu năng của các cấu trúc phân đoạn tăng ích (GWO).
+Caption 18: Chi tiết các nghiệm tối ưu trên ranh giới Pareto giữa Pitch ITAE và Yaw Energy.

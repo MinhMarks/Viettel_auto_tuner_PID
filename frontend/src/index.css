@@ -101,6 +101,7 @@ button.secondary:hover:not(:disabled) {
   font-weight: 500;
   transition: all 0.2s ease;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .secondary-btn:hover {
@@ -166,6 +167,7 @@ label {
   border-radius: 8px;
   font-weight: 500;
   transition: all 0.2s ease;
+  text-decoration: none;
 }
 
 .nav-btn:hover {

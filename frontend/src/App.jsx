@@ -13,6 +13,7 @@ import PageRobustness from './components/PageRobustness';
 import PageGainScheduling from './components/PageGainScheduling';
 import PageDocumentation from './components/PageDocumentation';
 import PageHistory from './components/PageHistory';
+import PageLQRComparison from './components/PageLQRComparison';
 
 function App() {
   const [mainTab, setMainTab] = useState('experiments'); // 'experiments', '3d', 'wiki'
@@ -66,7 +67,9 @@ function App() {
           let activeParams = manualParams;
           if (simController === 'GA' && tunedParams.GA) activeParams = tunedParams.GA;
           if (simController === 'PSO' && tunedParams.PSO) activeParams = tunedParams.PSO;
-          if (simController === 'BO' && tunedParams.BO) activeParams = tunedParams.BO;
+          if (simController === 'TPE' && tunedParams.TPE) activeParams = tunedParams.TPE;
+          if (simController === 'CMA-ES' && tunedParams['CMA-ES']) activeParams = tunedParams['CMA-ES'];
+          if (simController === 'GWO' && tunedParams.GWO) activeParams = tunedParams.GWO;
 
           wsRef.current.send(JSON.stringify({
             setpoint_pitch: joyPitch, setpoint_yaw: joyYaw,
@@ -112,6 +115,7 @@ function App() {
               <button className={`secondary-btn ${expTab === 'ideal' ? 'active-sub' : ''}`} onClick={() => setExpTab('ideal')}>1. Ideal Tuning</button>
               <button className={`secondary-btn ${expTab === 'robustness' ? 'active-sub' : ''}`} onClick={() => setExpTab('robustness')}>2. Robustness Sweep</button>
               <button className={`secondary-btn ${expTab === 'gainscheduling' ? 'active-sub' : ''}`} onClick={() => setExpTab('gainscheduling')}>3. Gain Scheduling</button>
+              <button className={`secondary-btn ${expTab === 'lqrcompare' ? 'active-sub' : ''}`} onClick={() => setExpTab('lqrcompare')}>4. LQR vs PID</button>
             </div>
           )}
 
@@ -128,7 +132,9 @@ function App() {
                             <option value="Manual">Manual Baseline</option>
                             <option value="GA">Genetic Algorithm (GA)</option>
                             <option value="PSO">Particle Swarm (PSO)</option>
-                            <option value="BO">Bayesian Opt (BO)</option>
+                            <option value="TPE">TPE</option>
+                            <option value="CMA-ES">CMA-ES</option>
+                            <option value="GWO">Grey Wolf (GWO)</option>
                         </select>
                         {simController !== 'Manual' && !tunedParams[simController] && (
                             <div style={{color: '#f87171', fontSize: 11, marginTop: 5}}>⚠️ Controller {simController} has not been tuned yet. Falling back to Manual. Please run Ideal Tuning first.</div>
@@ -195,6 +201,10 @@ function App() {
 
             <div style={{ display: mainTab === 'history' ? 'block' : 'none', height: '100%', overflowY: 'auto' }}>
                 <PageHistory />
+            </div>
+
+            <div style={{ display: mainTab === 'experiments' && expTab === 'lqrcompare' ? 'block' : 'none', height: '100%', overflowY: 'auto' }}>
+                <PageLQRComparison />
             </div>
           </div>
         </div>

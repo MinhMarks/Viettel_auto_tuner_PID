@@ -1,15 +1,17 @@
 import React from 'react';
 import axios from 'axios';
+import { useAppContext } from '../context/AppContext';
 
 const API_BASE = 'http://localhost:8088/api';
 
-export default function GlobalConfigPanel({
-    manualParams, setManualParams,
-    spPitch, setSpPitch,
-    spYaw, setSpYaw,
-    simDuration, setSimDuration,
-    trajectoryType, setTrajectoryType
-}) {
+export default function GlobalConfigPanel() {
+    const {
+        manualParams, setManualParams,
+        spPitch, setSpPitch,
+        spYaw, setSpYaw,
+        simDuration, setSimDuration,
+        trajectoryType, setTrajectoryType,
+    } = useAppContext();
     return (
         <div style={{ display: 'flex', gap: 20, marginBottom: 20, flexShrink: 0 }}>
             {/* Simulation & Trajectory Settings */}
@@ -27,17 +29,17 @@ export default function GlobalConfigPanel({
                     </div>
                     <div className="form-group" style={{ marginBottom: 0, width: 80 }}>
                         <label style={{ fontSize: 11 }}>Sim Duration</label>
-                        <input type="number" step="1" min={5} max={120} value={simDuration} onChange={(e) => setSimDuration(parseFloat(e.target.value))} style={{ padding: 4, width: '100%' }} />
+                        <input type="number" step="1" min={5} max={120} value={simDuration} onChange={(e) => setSimDuration(e.target.value)} style={{ padding: 4, width: '100%' }} />
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                     <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
                         <label style={{ fontSize: 11 }}>Base Amplitude Pitch (deg)</label>
-                        <input type="number" step="1" min={-60} max={60} value={spPitch} onChange={(e) => setSpPitch(parseFloat(e.target.value))} style={{ padding: 4, width: '100%' }} />
+                        <input type="number" step="1" min={-60} max={60} value={spPitch} onChange={(e) => setSpPitch(e.target.value)} style={{ padding: 4, width: '100%' }} />
                     </div>
                     <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
                         <label style={{ fontSize: 11 }}>Base Amplitude Yaw (deg)</label>
-                        <input type="number" step="1" min={-360} max={360} value={spYaw} onChange={(e) => setSpYaw(parseFloat(e.target.value))} style={{ padding: 4, width: '100%' }} />
+                        <input type="number" step="1" min={-360} max={360} value={spYaw} onChange={(e) => setSpYaw(e.target.value)} style={{ padding: 4, width: '100%' }} />
                     </div>
                 </div>
             </div>
@@ -60,7 +62,7 @@ export default function GlobalConfigPanel({
                             <input type="number" step="0.5" min={0} max={200} value={manualParams[idx]}
                                 onChange={e => {
                                     const newP = [...manualParams];
-                                    newP[idx] = parseFloat(e.target.value);
+                                    newP[idx] = e.target.value;
                                     setManualParams(newP);
                                 }} style={{ padding: 4, width: '100%', textAlign: 'center' }} />
                         </div>
