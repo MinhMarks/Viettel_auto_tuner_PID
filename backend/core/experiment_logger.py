@@ -56,7 +56,7 @@ def save_experiment_results(results_dict, req):
         'Yaw_RiseTime', 'Yaw_SettlingTime', 'Yaw_Overshoot', 'Yaw_SSE', 'Yaw_CE', 'Yaw_ITAE'
     ]
     
-    def simulate_for_metrics(params, sp_pitch, sp_yaw, t_max, dist_cfg, params_large, gs_method):
+    def simulate_for_metrics(params, sp_pitch, sp_yaw, t_max, dist_cfg, params_large, gs_method, trajectory_type='step'):
         env = Helicopter2DOF(disturbance_config=dist_cfg)
         controller = DecentralizedPID(params, sp_pitch, sp_yaw, params_large=params_large, gs_method=gs_method)
         state = [0.0, 0.0, 0.0, 0.0]
@@ -67,20 +67,40 @@ def save_experiment_results(results_dict, req):
         u_p_arr, u_y_arr = [], []
         current_time = 0.0
         
+        sp_p_arr, sp_y_arr = [], []
         for _ in range(steps):
+            t = current_time
+            if trajectory_type == 'step':
+                sp_p, sp_y = sp_pitch, sp_yaw
+            elif trajectory_type == 'sine':
+                import numpy as np
+                sp_p = sp_pitch * np.sin(2 * np.pi * 0.25 * t)
+                sp_y = sp_yaw * np.sin(2 * np.pi * 0.25 * t)
+            elif trajectory_type == 'square':
+                import numpy as np
+                sp_p = sp_pitch if np.sin(2 * np.pi * 0.1 * t) > 0 else -sp_pitch
+                sp_y = sp_yaw if np.sin(2 * np.pi * 0.1 * t) > 0 else -sp_yaw
+            elif trajectory_type == 'multi-step':
+                sp_p = sp_pitch * (min(int(t / 2.5) + 1, 4) / 4.0)
+                sp_y = sp_yaw * (min(int(t / 2.5) + 1, 4) / 4.0)
+            else:
+                sp_p, sp_y = sp_pitch, sp_yaw
+                
             t_arr.append(current_time)
             p_arr.append(state[0])
             y_arr.append(state[2])
+            sp_p_arr.append(sp_p)
+            sp_y_arr.append(sp_y)
             
-            u = controller.compute(state[0], state[2], time_step)
+            u = controller.compute(state[0], state[2], time_step, setpoint_pitch=sp_p, setpoint_yaw=sp_y)
             u_p_arr.append(u[0])
             u_y_arr.append(u[1])
             
             state = env.simulate_step(state, u[0], u[1], time_step)
             current_time += time_step
             
-        m_pitch = calculate_metrics(t_arr, p_arr, sp_pitch, u_p_arr)
-        m_yaw = calculate_metrics(t_arr, y_arr, sp_yaw, u_y_arr)
+        m_pitch = calculate_metrics(t_arr, p_arr, sp_p_arr if trajectory_type != 'step' else sp_pitch, u_p_arr)
+        m_yaw = calculate_metrics(t_arr, y_arr, sp_y_arr if trajectory_type != 'step' else sp_yaw, u_y_arr)
         return m_pitch, m_yaw
     
     with open(csv_file, mode='a', newline='', encoding='utf-8') as f:
@@ -100,7 +120,7 @@ def save_experiment_results(results_dict, req):
                 
                     # Calculate metrics
                     params_large = params[6:] if len(params) > 6 else None
-                    m_pitch, m_yaw = simulate_for_metrics(params[:6], req.setpoint_pitch, req.setpoint_yaw, req.t_max, dist_cfg, params_large, req.gs_method)
+                    m_pitch, m_yaw = simulate_for_metrics(params[:6], req.setpoint_pitch, req.setpoint_yaw, req.t_max, dist_cfg, params_large, req.gs_method, getattr(req, 'trajectory_type', 'step'))
                     
                     writer.writerow({
                         'Timestamp': timestamp_str,

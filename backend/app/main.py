@@ -1,3 +1,10 @@
+import os
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -34,6 +41,7 @@ class SimulateRequest(BaseModel):
     setpoint_yaw: float
     t_max: float = 10.0
     disturbance_config: Optional[dict] = None
+    disturbance_sequence: Optional[List[dict]] = None
     trajectory_type: str = 'step'
     gs_method: str = 'step'
     controller_type: str = 'classic'
@@ -182,6 +190,16 @@ def simulate(req: SimulateRequest):
     
     for i in range(steps):
         t = i * dt
+        
+        # Apply dynamic disturbance sequence if provided
+        if req.disturbance_sequence:
+            active_dist = req.disturbance_config or {}
+            for seq in req.disturbance_sequence:
+                if seq.get("start", 0) <= t <= seq.get("end", 0):
+                    active_dist = seq.get("config", {})
+                    break
+            env.set_disturbances(active_dist)
+            
         # Determine current setpoint based on trajectory type
         import numpy as np
         if req.trajectory_type == 'step':
@@ -234,6 +252,26 @@ def simulate(req: SimulateRequest):
             "yaw": metrics_yaw
         }
     }
+
+class ExportRejectionRequest(BaseModel):
+    t_max: float = 30.0
+    setpoint_pitch: float = 0.0
+    setpoint_yaw: float = 0.0
+    base_disturbance: dict = {}
+    disturbance_sequence: List[dict] = []
+    algorithms: dict = {} # Map of "name" -> params
+
+@app.post("/api/export_rejection")
+def export_rejection(req: ExportRejectionRequest):
+    import sys as _sys, os as _os
+    _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), '..', 'scripts'))
+    from plot_rejection import generate_rejection_plot
+    
+    out_dir = _os.path.join(_os.path.dirname(__file__), '..', 'scripts')
+    config = req.dict()
+    
+    res = generate_rejection_plot(config, out_dir)
+    return {"message": "Export successful", "csv_path": res["csv_path"], "pdf_path": res["pdf_path"]}
 
 @app.get("/api/progress")
 def get_progress(task_id: str):
@@ -288,7 +326,7 @@ def get_mimo_lqr_baseline():
 
 @app.get("/api/objective_functions")
 def get_objective_functions():
-    from objective_functions.registry import registry
+    from core.objective_functions.registry import registry
     return {"objectives": registry.get_all_info()}
 
 @app.post("/api/tune")
@@ -652,6 +690,9 @@ def robustness_sweep(req: RobustnessSweepRequest):
             elif req.trajectory_type == 'square':
                 sp_p = req.setpoint_pitch if np.sin(2 * np.pi * 0.1 * t) > 0 else -req.setpoint_pitch
                 sp_y = req.setpoint_yaw if np.sin(2 * np.pi * 0.1 * t) > 0 else -req.setpoint_yaw
+            elif req.trajectory_type == 'multi-step':
+                sp_p = req.setpoint_pitch * (min(int(t / 2.5) + 1, 4) / 4.0)
+                sp_y = req.setpoint_yaw * (min(int(t / 2.5) + 1, 4) / 4.0)
             
             pitch, _, yaw, _ = state
             
@@ -681,8 +722,8 @@ def robustness_sweep(req: RobustnessSweepRequest):
             history_vp.append(v_pitch)
             history_vy.append(v_yaw)
             
-        metrics_pitch = calculate_metrics(history_t, history_pitch, req.setpoint_pitch, history_vp)
-        metrics_yaw = calculate_metrics(history_t, history_yaw, req.setpoint_yaw, history_vy)
+        metrics_pitch = calculate_metrics(history_t, history_pitch, history_sp_p if req.trajectory_type != 'step' else req.setpoint_pitch, history_vp)
+        metrics_yaw = calculate_metrics(history_t, history_yaw, history_sp_y if req.trajectory_type != 'step' else req.setpoint_yaw, history_vy)
         
         results[f"Conf {i+1}"] = {
             "config": conf,

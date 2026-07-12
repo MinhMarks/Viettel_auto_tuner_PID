@@ -340,7 +340,7 @@ export default function PageGainScheduling({
                             {tuningMethod !== 'Manual' && (
                                 <div className="form-group" style={{marginBottom: 0, width: 100}}>
                                     <label style={{fontSize: 12}}>Iterations</label>
-                                    <input type="number" min="1" value={tuningIters} onChange={e => setTuningIters(parseInt(e.target.value))} style={{width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid #444', color: 'white', padding: 4, borderRadius: 4}} />
+                                    <input type="number" min="1" value={tuningIters} onChange={e => setTuningIters(e.target.value)} style={{width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid #444', color: 'white', padding: 4, borderRadius: 4}} />
                                 </div>
                             )}
 
@@ -363,7 +363,7 @@ export default function PageGainScheduling({
                                     <input type="number" step="0.1" value={manualParamsLarge[i]} 
                                         onChange={e => {
                                             const np = [...manualParamsLarge];
-                                            np[i] = parseFloat(e.target.value) || 0;
+                                            np[i] = e.target.value || 0;
                                             setManualParamsLarge(np);
                                         }} 
                                         style={{width: 50, background: 'rgba(0,0,0,0.3)', border: '1px solid #555', color: 'white', padding: '2px 4px', fontSize: 11, borderRadius: 3}} 
@@ -377,19 +377,19 @@ export default function PageGainScheduling({
                 <div style={{display: 'flex', gap: 16, padding: '10px 0', borderTop: '1px solid #333'}}>
                     <div className="form-group" style={{marginBottom: 0}}>
                         <label style={{fontSize: 11}}>Wind Pitch (Nm)</label>
-                        <input type="number" step="0.01" value={disturbances.wind_torque_p} onChange={e => setDisturbances({...disturbances, wind_torque_p: parseFloat(e.target.value)})} style={{padding: 4}}/>
+                        <input type="number" step="0.01" value={disturbances.wind_torque_p} onChange={e => setDisturbances({...disturbances, wind_torque_p: e.target.value})} style={{padding: 4}}/>
                     </div>
                     <div className="form-group" style={{marginBottom: 0}}>
                         <label style={{fontSize: 11}}>Wind Yaw (Nm)</label>
-                        <input type="number" step="0.01" value={disturbances.wind_torque_y} onChange={e => setDisturbances({...disturbances, wind_torque_y: parseFloat(e.target.value)})} style={{padding: 4}}/>
+                        <input type="number" step="0.01" value={disturbances.wind_torque_y} onChange={e => setDisturbances({...disturbances, wind_torque_y: e.target.value})} style={{padding: 4}}/>
                     </div>
                     <div className="form-group" style={{marginBottom: 0}}>
                         <label style={{fontSize: 11}}>Sensor Noise StdDev</label>
-                        <input type="number" step="0.01" value={disturbances.sensor_noise_std} onChange={e => setDisturbances({...disturbances, sensor_noise_std: parseFloat(e.target.value)})} style={{padding: 4}}/>
+                        <input type="number" step="0.01" value={disturbances.sensor_noise_std} onChange={e => setDisturbances({...disturbances, sensor_noise_std: e.target.value})} style={{padding: 4}}/>
                     </div>
                     <div className="form-group" style={{marginBottom: 0}}>
                         <label style={{fontSize: 11}}>Payload Ratio</label>
-                        <input type="number" step="0.1" value={disturbances.mass_payload} onChange={e => setDisturbances({...disturbances, mass_payload: parseFloat(e.target.value)})} style={{padding: 4}}/>
+                        <input type="number" step="0.1" value={disturbances.mass_payload} onChange={e => setDisturbances({...disturbances, mass_payload: e.target.value})} style={{padding: 4}}/>
                     </div>
                     
                     <div style={{flex: 1}}></div>

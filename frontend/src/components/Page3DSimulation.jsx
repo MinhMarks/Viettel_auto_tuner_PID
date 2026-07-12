@@ -112,7 +112,7 @@ export default function Page3DSimulation() {
                                 <input
                                     type="number" step={step}
                                     value={distSim[key]}
-                                    onChange={e => setDistSim({ ...distSim, [key]: parseFloat(e.target.value) })}
+                                    onChange={e => setDistSim({ ...distSim, [key]: e.target.value })}
                                     style={{ padding: 4, width: '100%' }}
                                 />
                             </div>

@@ -27,7 +27,8 @@ class ObjectiveFunctionRegistry:
             # Fallback to default
             return self._registry.get('default_objective')
         return self._registry[name]
-        
+
+
     def get_all_info(self):
         """Return a list of available objective functions for the frontend."""
         return [

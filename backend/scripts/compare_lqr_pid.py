@@ -55,7 +55,14 @@ def run_simulation(controller_type, controller_data, disturbance_config,
         controller = MIMOLQRController(params, v_limits=(env.V_min, env.V_max))
     else:  # pid
         params = controller_data['params']
-        controller = DecentralizedPID(params, setpoint_pitch=0.0, setpoint_yaw=0.0, v_limits=(env.V_min, env.V_max))
+        controller = DecentralizedPID(
+            params, 
+            setpoint_pitch=0.0, 
+            setpoint_yaw=0.0, 
+            v_limits=(env.V_min, env.V_max),
+            controller_type='model_based',
+            gs_method='sigmoid'
+        )
 
     for i in range(steps):
         t = i * dt
@@ -93,105 +100,125 @@ def run_simulation(controller_type, controller_data, disturbance_config,
 #  PHẦN 3: VẼ BIỂU ĐỒ SO SÁNH
 # ============================================================
 
-def plot_comparison(lqr_data, pid_data, scenario_name, output_path, sp_label_y="0.0 rad (cố định)"):
+def plot_comparison(lqr_data, pid_data, scenario_name, output_path, sp_label_y="0.0 rad"):
     """
-    Vẽ biểu đồ 2x2 so sánh LQR và PID cho Pitch và Yaw.
+    Vẽ biểu đồ 2x2 so sánh LQR và PID cho Pitch và Yaw theo tiêu chuẩn học thuật A*.
     """
     t = lqr_data["time"]
 
-    fig = plt.figure(figsize=(16, 10))
-    fig.patch.set_facecolor('#0d1117')
-    gs_layout = gridspec.GridSpec(2, 2, hspace=0.45, wspace=0.3)
-    ax_pp = fig.add_subplot(gs_layout[0, 0])
-    ax_py = fig.add_subplot(gs_layout[0, 1])
-    ax_yp = fig.add_subplot(gs_layout[1, 0])
-    ax_yy = fig.add_subplot(gs_layout[1, 1])
+    # Thiết lập typography chuẩn LaTeX
+    plt.rcParams['font.family'] = 'serif'
+    
+    # ----------------------------------------------------
+    # FIG 1: STATE RESPONSE (Pitch & Yaw)
+    # ----------------------------------------------------
+    fig_state = plt.figure(figsize=(10, 4))
+    fig_state.patch.set_facecolor('white') # Strict white background
+    gs_state = gridspec.GridSpec(1, 2, wspace=0.3)
+    ax_pp = fig_state.add_subplot(gs_state[0, 0])
+    ax_py = fig_state.add_subplot(gs_state[0, 1])
 
-    colors = {
-        "lqr_line": "#60a5fa",     # Blue
-        "pid_line": "#f87171",     # Red
-        "sp": "#a3e635",           # Lime
-        "grid": "#1f2937",
-        "text": "#e5e7eb",
-        "bg": "#111827"
-    }
+    # Colorblind friendly colors + distinct line styles and markers
+    color_lqr = '#1f77b4'  # blue
+    style_lqr = '-'
+    marker_lqr = 'o'
+    
+    color_pid = '#d62728'  # red
+    style_pid = '-.'
+    marker_pid = 's'
+    
+    color_ref = 'k'        # black
+    style_ref = '--'
 
-    def style_ax(ax, title, xlabel, ylabel):
-        ax.set_facecolor(colors["bg"])
-        ax.set_title(title, color=colors["text"], fontsize=12, fontweight='bold', pad=10)
-        ax.set_xlabel(xlabel, color=colors["text"], fontsize=10)
-        ax.set_ylabel(ylabel, color=colors["text"], fontsize=10)
-        ax.tick_params(colors=colors["text"])
-        ax.spines['bottom'].set_color('#374151')
-        ax.spines['top'].set_color('#374151')
-        ax.spines['left'].set_color('#374151')
-        ax.spines['right'].set_color('#374151')
-        ax.grid(True, color=colors["grid"], linewidth=0.5, alpha=0.8)
+    # Giảm mật độ marker
+    me = max(1, len(t) // 10)
+
+    def style_ax(ax, xlabel, ylabel):
+        ax.set_facecolor('white')
+        ax.set_xlabel(xlabel, fontsize=14)
+        ax.set_ylabel(ylabel, fontsize=14)
+        ax.tick_params(axis='both', which='major', labelsize=12)
+        
+        # Bỏ top, right spines
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        
+        # Grid ngang, nhạt, nằm sau data
+        ax.grid(axis='y', color='#E0E0E0', linestyle='--', linewidth=1, zorder=0)
+        ax.set_axisbelow(True)
 
     # --- Subplot 1: Pitch response ---
-    style_ax(ax_pp, "Phản hồi Trục Pitch", "Thời gian (s)", "Góc Pitch (rad)")
-    ax_pp.plot(t, lqr_data["sp_pitch"], '--', color=colors["sp"], linewidth=1.5, label='Setpoint')
-    ax_pp.plot(t, lqr_data["pitch"], color=colors["lqr_line"], linewidth=2.0, label='LQR (MIMO)')
-    ax_pp.plot(t, pid_data["pitch"], color=colors["pid_line"], linewidth=2.0, label='Decentralized PID', alpha=0.9)
-    ax_pp.legend(facecolor='#1f2937', edgecolor='#374151', labelcolor=colors["text"], fontsize=9)
+    style_ax(ax_pp, "Time (s)", "Pitch Angle (rad)")
+    ax_pp.plot(t, lqr_data["sp_pitch"], linestyle=style_ref, color=color_ref, linewidth=1.5, label='Reference', zorder=1)
+    ax_pp.plot(t, lqr_data["pitch"], linestyle=style_lqr, marker=marker_lqr, markevery=me, color=color_lqr, linewidth=2.0, label='MIMO LQR', zorder=2)
+    ax_pp.plot(t, pid_data["pitch"], linestyle=style_pid, marker=marker_pid, markevery=me, color=color_pid, linewidth=2.0, label='AI-PID (GWO)', zorder=3)
+    ax_pp.legend(fontsize=12, frameon=False, loc='best')
 
     # --- Subplot 2: Yaw response (cross-coupling effect) ---
-    style_ax(ax_py, "⚡ Phản hồi Trục Yaw (Nhiễu Chéo)", "Thời gian (s)", "Góc Yaw (rad)")
-    ax_py.axhline(0, color=colors["sp"], linewidth=1.5, linestyle='--', label=f'Setpoint Yaw = {sp_label_y}')
-    ax_py.plot(t, lqr_data["yaw"], color=colors["lqr_line"], linewidth=2.0, label='LQR (MIMO)')
-    ax_py.plot(t, pid_data["yaw"], color=colors["pid_line"], linewidth=2.0, label='Decentralized PID', alpha=0.9)
-    ax_py.legend(facecolor='#1f2937', edgecolor='#374151', labelcolor=colors["text"], fontsize=9)
+    style_ax(ax_py, "Time (s)", "Yaw Angle (rad)")
+    ax_py.axhline(0, color=color_ref, linewidth=1.5, linestyle=style_ref, label=f'Reference (Yaw={sp_label_y})', zorder=1)
+    ax_py.plot(t, lqr_data["yaw"], linestyle=style_lqr, marker=marker_lqr, markevery=me, color=color_lqr, linewidth=2.0, label='MIMO LQR', zorder=2)
+    ax_py.plot(t, pid_data["yaw"], linestyle=style_pid, marker=marker_pid, markevery=me, color=color_pid, linewidth=2.0, label='AI-PID (GWO)', zorder=3)
+    ax_py.legend(fontsize=12, frameon=False, loc='best')
+
+    output_path_state_pdf = output_path.replace('.png', '_state.pdf')
+    fig_state.savefig(output_path_state_pdf, format='pdf', bbox_inches='tight')
+    plt.close(fig_state)
+
+    # ----------------------------------------------------
+    # FIG 2: CONTROL INPUT (V_pitch & V_yaw)
+    # ----------------------------------------------------
+    fig_ctrl = plt.figure(figsize=(10, 4))
+    fig_ctrl.patch.set_facecolor('white') # Strict white background
+    gs_ctrl = gridspec.GridSpec(1, 2, wspace=0.3)
+    ax_yp = fig_ctrl.add_subplot(gs_ctrl[0, 0])
+    ax_yy = fig_ctrl.add_subplot(gs_ctrl[0, 1])
 
     # --- Subplot 3: Control voltage Pitch ---
-    style_ax(ax_yp, "Điện áp điều khiển Pitch (V)", "Thời gian (s)", "Điện áp V_p (V)")
-    ax_yp.plot(t, lqr_data["v_pitch"], color=colors["lqr_line"], linewidth=1.5, label='LQR')
-    ax_yp.plot(t, pid_data["v_pitch"], color=colors["pid_line"], linewidth=1.5, label='PID', alpha=0.9)
-    ax_yp.axhline(24, color='#fbbf24', linestyle=':', linewidth=1, label='±24V Saturation')
-    ax_yp.axhline(-24, color='#fbbf24', linestyle=':', linewidth=1)
-    ax_yp.legend(facecolor='#1f2937', edgecolor='#374151', labelcolor=colors["text"], fontsize=9)
+    style_ax(ax_yp, "Time (s)", "Control Input $V_p$ (V)")
+    ax_yp.plot(t, pid_data["v_pitch"], linestyle='-', color=color_pid, linewidth=0.8, alpha=0.6, label='AI-PID (GWO)', zorder=2)
+    ax_yp.plot(t, lqr_data["v_pitch"], linestyle=style_lqr, color=color_lqr, linewidth=1.5, label='MIMO LQR', zorder=3)
+    ax_yp.axhline(24, color='gray', linestyle=':', linewidth=1.5, label='Saturation $\pm$24V', zorder=1)
+    ax_yp.axhline(-24, color='gray', linestyle=':', linewidth=1.5, zorder=1)
+    ax_yp.legend(fontsize=12, frameon=False, loc='best')
 
     # --- Subplot 4: Control voltage Yaw ---
-    style_ax(ax_yy, "Điện áp điều khiển Yaw (V)", "Thời gian (s)", "Điện áp V_y (V)")
-    ax_yy.plot(t, lqr_data["v_yaw"], color=colors["lqr_line"], linewidth=1.5, label='LQR')
-    ax_yy.plot(t, pid_data["v_yaw"], color=colors["pid_line"], linewidth=1.5, label='PID', alpha=0.9)
-    ax_yy.axhline(24, color='#fbbf24', linestyle=':', linewidth=1, label='±24V Saturation')
-    ax_yy.axhline(-24, color='#fbbf24', linestyle=':', linewidth=1)
-    ax_yy.legend(facecolor='#1f2937', edgecolor='#374151', labelcolor=colors["text"], fontsize=9)
+    style_ax(ax_yy, "Time (s)", "Control Input $V_y$ (V)")
+    ax_yy.plot(t, pid_data["v_yaw"], linestyle='-', color=color_pid, linewidth=0.8, alpha=0.6, label='AI-PID (GWO)', zorder=2)
+    ax_yy.plot(t, lqr_data["v_yaw"], linestyle=style_lqr, color=color_lqr, linewidth=1.5, label='MIMO LQR', zorder=3)
+    ax_yy.axhline(24, color='gray', linestyle=':', linewidth=1.5, label='Saturation $\pm$24V', zorder=1)
+    ax_yy.axhline(-24, color='gray', linestyle=':', linewidth=1.5, zorder=1)
+    ax_yy.legend(fontsize=12, frameon=False, loc='best')
+
+    output_path_ctrl_pdf = output_path.replace('.png', '_control.pdf')
+    fig_ctrl.savefig(output_path_ctrl_pdf, format='pdf', bbox_inches='tight')
+    plt.close(fig_ctrl)
 
     # --- Tính toán và in các chỉ số đánh giá ---
+    pitch_arr_lqr = np.array(lqr_data["pitch"])
+    pitch_arr_pid = np.array(pid_data["pitch"])
+    sp_p_arr = np.array(lqr_data["sp_pitch"])
+    lqr_pitch_rmse = np.sqrt(np.mean((pitch_arr_lqr - sp_p_arr) ** 2))
+    pid_pitch_rmse = np.sqrt(np.mean((pitch_arr_pid - sp_p_arr) ** 2))
+    lqr_pitch_max = np.max(np.abs(pitch_arr_lqr - sp_p_arr))
+    pid_pitch_max = np.max(np.abs(pitch_arr_pid - sp_p_arr))
+
     yaw_arr_lqr = np.array(lqr_data["yaw"])
     yaw_arr_pid = np.array(pid_data["yaw"])
     sp_y_arr = np.array(lqr_data["sp_yaw"])
-
     lqr_yaw_rmse = np.sqrt(np.mean((yaw_arr_lqr - sp_y_arr) ** 2))
     pid_yaw_rmse = np.sqrt(np.mean((yaw_arr_pid - sp_y_arr) ** 2))
     lqr_yaw_max = np.max(np.abs(yaw_arr_lqr - sp_y_arr))
     pid_yaw_max = np.max(np.abs(yaw_arr_pid - sp_y_arr))
-
-    summary = (
-        f"Kịch bản: {scenario_name}\n"
-        f"LQR → Yaw RMSE: {lqr_yaw_rmse:.5f} rad | Max Cross-Error: {lqr_yaw_max:.5f} rad\n"
-        f"PID → Yaw RMSE: {pid_yaw_rmse:.5f} rad | Max Cross-Error: {pid_yaw_max:.5f} rad\n"
-        f"Cải thiện LQR so với PID: {((pid_yaw_rmse - lqr_yaw_rmse)/pid_yaw_rmse*100):.1f}% (RMSE)"
-    )
-
-    fig.suptitle(
-        f"So sánh LQR (MIMO) vs Decentralized PID\nKịch bản: {scenario_name}",
-        color='#a78bfa', fontsize=14, fontweight='bold', y=1.01
-    )
-
-    fig.text(0.5, -0.02, summary, ha='center', va='top',
-             color='#9ca3af', fontsize=9, fontfamily='monospace',
-             bbox=dict(facecolor='#1f2937', edgecolor='#374151', boxstyle='round,pad=0.5'))
-
-    plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor=fig.get_facecolor())
-    plt.close()
-    print(f"  ✓ Đã lưu biểu đồ: {output_path}")
-    print(f"\n  {summary}")
+    
+    print(f"  ✓ Đã lưu biểu đồ: {output_path_state_pdf} và {output_path_ctrl_pdf}")
+    print(f"      (Lưu ý Caption tiếng Việt cho bài báo: Tùy chỉnh theo báo cáo thực tế)")
+    
     return {
+        "lqr_pitch_rmse": float(lqr_pitch_rmse), "pid_pitch_rmse": float(pid_pitch_rmse),
+        "lqr_pitch_max_error": float(lqr_pitch_max), "pid_pitch_max_error": float(pid_pitch_max),
         "lqr_yaw_rmse": float(lqr_yaw_rmse), "pid_yaw_rmse": float(pid_yaw_rmse),
-        "lqr_yaw_max_cross_error": float(lqr_yaw_max), "pid_yaw_max_cross_error": float(pid_yaw_max),
-        "improvement_percent": float((pid_yaw_rmse - lqr_yaw_rmse) / pid_yaw_rmse * 100) if pid_yaw_rmse > 0 else 0
+        "lqr_yaw_max_cross_error": float(lqr_yaw_max), "pid_yaw_max_cross_error": float(pid_yaw_max)
     }
 
 
@@ -203,9 +230,9 @@ def run_comparison(
     disturbance_config=None,
     t_max=10.0,
     dt=0.002,
-    sp_pitch_step=0.3,
+    sp_pitch_step=  0.8727 ,
     sp_yaw_fixed=0.0,
-    sine_amplitude=0.4,
+    sine_amplitude= 0.8727 ,
     sine_freq=0.25,
     output_dir=None
 ):
@@ -224,18 +251,20 @@ def run_comparison(
     print("\n=== BẮT ĐẦU SO SÁNH LQR vs DECENTRALIZED PID ===\n")
 
     # Xây dựng bộ điều khiển
-    print("[1/4] Đang tính toán ma trận LQR K...")
+    print("[1/5] Đang tính toán ma trận LQR K...")
     params = compute_mimo_lqr_baseline()
     lqr_data_ctrl = {"params": params}
 
-    print("[2/4] Đang tải thông số Decentralized PID (LQR-Baseline)...")
-    pid_params = compute_lqr_pid_baseline()
+    print("[2/5] Đang tải thông số AI-PID (GWO Optimized)...")
+    # GWO best params from user input
+    pid_params = [98.3466207, 48.8761348, 23.9687184, 58.0128565, 6.81405923, 100]
+
     pid_data_ctrl = {"params": pid_params}
 
     results = {}
 
     # ---- Kịch bản 1: Asymmetric Step ----
-    print("\n[3/4] Chạy Kịch bản 1: Asymmetric Step Test...")
+    print("\n[3/5] Chạy Kịch bản 1: Asymmetric Step Test...")
     sp_pitch_step_fn = lambda t: sp_pitch_step
     sp_yaw_zero_fn = lambda t: sp_yaw_fixed
 
@@ -247,8 +276,26 @@ def run_comparison(
                                   f"Kịch bản 1 – Asymmetric Step (Pitch→{sp_pitch_step:.2f}rad, Yaw→{sp_yaw_fixed:.2f}rad)",
                                   out_s1, sp_label_y=f"{sp_yaw_fixed:.1f} rad")
 
+    # ---- Kịch bản 2: Multi-step Trajectory Tracking ----
+    print("\n[4/5] Chạy Kịch bản 2: Multi-step Trajectory Tracking...")
+    def sp_multi_step_fn(t):
+        if t < t_max * 0.33:
+            return sp_pitch_step
+        elif t < t_max * 0.66:
+            return -sp_pitch_step
+        else:
+            return 0.0
+
+    lqr_s2 = run_simulation('lqr', lqr_data_ctrl, disturbance_config, t_max, dt, sp_multi_step_fn, sp_yaw_zero_fn)
+    pid_s2 = run_simulation('pid', pid_data_ctrl, disturbance_config, t_max, dt, sp_multi_step_fn, sp_yaw_zero_fn)
+
+    out_s2 = os.path.join(output_dir, "scenario2_multi_step.png")
+    metrics_s2 = plot_comparison(lqr_s2, pid_s2,
+                                  f"Kịch bản 2 – Multi-step Tracking (Pitch: $\pm${sp_pitch_step:.2f}rad, Yaw→{sp_yaw_fixed:.2f}rad)",
+                                  out_s2, sp_label_y=f"{sp_yaw_fixed:.1f} rad")
+
     # ---- Kịch bản 3: Sine Trajectory Tracking ----
-    print("\n[4/4] Chạy Kịch bản 3: Sine Trajectory Tracking...")
+    print("\n[5/5] Chạy Kịch bản 3: Sine Trajectory Tracking...")
     sp_sine_fn = lambda t: sine_amplitude * np.sin(2 * np.pi * sine_freq * t)
     sp_yaw_zero_fn2 = lambda t: sp_yaw_fixed
 
@@ -276,6 +323,21 @@ def run_comparison(
             "pid_sp_yaw": pid_s1["sp_yaw"],
             "metrics": metrics_s1,
         },
+        "scenario2": {
+            "label": "Multi-step Trajectory Tracking",
+            "output_image": out_s2,
+            "lqr_time": lqr_s2["time"],
+            "lqr_pitch": lqr_s2["pitch"],
+            "lqr_yaw": lqr_s2["yaw"],
+            "lqr_sp_pitch": lqr_s2["sp_pitch"],
+            "lqr_sp_yaw": lqr_s2["sp_yaw"],
+            "pid_time": pid_s2["time"],
+            "pid_pitch": pid_s2["pitch"],
+            "pid_yaw": pid_s2["yaw"],
+            "pid_sp_pitch": pid_s2["sp_pitch"],
+            "pid_sp_yaw": pid_s2["sp_yaw"],
+            "metrics": metrics_s2,
+        },
         "scenario3": {
             "label": "Sine Trajectory Tracking",
             "output_image": out_s3,
@@ -297,5 +359,43 @@ def run_comparison(
     return results
 
 
+def generate_latex_table(results):
+    print("\n\\begin{table}[h]")
+    print("\\centering")
+    print("\\caption{Comparison of Controller Performance Metrics}")
+    print("\\label{tab:performance_metrics}")
+    print("\\begin{tabular}{@{}llcccc@{}}")
+    print("\\toprule")
+    print("\\multirow{2}{*}{Scenario} & \\multirow{2}{*}{Metric} & \\multicolumn{2}{c}{Pitch ($\\theta$)} & \\multicolumn{2}{c}{Yaw ($\\psi$)} \\\\ \\cmidrule(l){3-4} \\cmidrule(l){5-6}")
+    print(" & & LQR & AI-PID & LQR & AI-PID \\\\ \\midrule")
+    
+    for s_key in ["scenario1", "scenario2", "scenario3"]:
+        m = results[s_key]["metrics"]
+        label = results[s_key]["label"]
+        print(f"\\multirow{{2}}{{*}}{{{label}}} & RMSE (rad) & {m['lqr_pitch_rmse']:.4f} & {m['pid_pitch_rmse']:.4f} & {m['lqr_yaw_rmse']:.4f} & {m['pid_yaw_rmse']:.4f} \\\\")
+        print(f" & Max Error (rad) & {m['lqr_pitch_max_error']:.4f} & {m['pid_pitch_max_error']:.4f} & {m['lqr_yaw_max_cross_error']:.4f} & {m['pid_yaw_max_cross_error']:.4f} \\\\")
+        if s_key in ["scenario1", "scenario2"]:
+            print("\\midrule")
+            
+    print("\\bottomrule")
+    print("\\end{tabular}")
+    print("\\end{table}\n")
+
+def generate_csv_table(results, filename=None):
+    if filename is None:
+        filename = os.path.join(SCRIPT_DIR, "comparison_metrics.csv")
+    import csv
+    with open(filename, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(["Scenario", "Metric", "LQR_Pitch", "AI-PID_Pitch", "LQR_Yaw", "AI-PID_Yaw"])
+        for s_key in ["scenario1", "scenario2", "scenario3"]:
+            m = results[s_key]["metrics"]
+            label = results[s_key]["label"]
+            writer.writerow([label, "RMSE (rad)", m['lqr_pitch_rmse'], m['pid_pitch_rmse'], m['lqr_yaw_rmse'], m['pid_yaw_rmse']])
+            writer.writerow([label, "Max Error (rad)", m['lqr_pitch_max_error'], m['pid_pitch_max_error'], m['lqr_yaw_max_cross_error'], m['pid_yaw_max_cross_error']])
+    print(f"\n  ✓ Đã lưu bảng số liệu CSV: {filename}")
+
 if __name__ == "__main__":
-    run_comparison()
+    results = run_comparison()
+    generate_latex_table(results)
+    generate_csv_table(results)

@@ -7,7 +7,9 @@ import { AppProvider } from './context/AppContext'
 import Layout from './components/Layout'
 import ExperimentsLayout from './components/ExperimentsLayout'
 import PageIdealTuning from './components/PageIdealTuning'
-import PageRobustness from './components/PageRobustness'
+import PageRobustnessLayout from './components/PageRobustnessLayout'
+import PageRobustnessSweep from './components/PageRobustnessSweep'
+import PageRobustnessRejection from './components/PageRobustnessRejection'
 import PageGainScheduling from './components/PageGainScheduling'
 import PageLQRComparison from './components/PageLQRComparison'
 import Page3DSimulation from './components/Page3DSimulation'
@@ -30,7 +32,15 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="/experiments/ideal" replace /> },
           { path: 'ideal',          element: <PageIdealTuning /> },
-          { path: 'robustness',     element: <PageRobustness /> },
+          { 
+            path: 'robustness',     
+            element: <PageRobustnessLayout />,
+            children: [
+                { index: true, element: <Navigate to="sweep" replace /> },
+                { path: 'sweep', element: <PageRobustnessSweep /> },
+                { path: 'rejection', element: <PageRobustnessRejection /> }
+            ]
+          },
           { path: 'gainscheduling', element: <PageGainScheduling /> },
           { path: 'lqr',            element: <PageLQRComparison /> },
         ],

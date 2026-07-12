@@ -46,68 +46,76 @@ function LineChart({ data, title, yLabel, height = 240 }) {
 
   return (
     <div style={{ width: '100%' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', marginBottom: 6, letterSpacing: 0.5 }}>
-        {title}
-      </div>
       <svg width="100%" viewBox={`0 0 ${W} ${H}`}
-        style={{ background: 'rgba(10,12,24,0.85)', borderRadius: 10, border: '1px solid #1f2937', display: 'block' }}>
-        {/* Grid */}
+        style={{ background: '#ffffff', borderRadius: 4, display: 'block' }}>
+        {/* Horizontal Gridlines (Light Grey) */}
         {yTickVals.map((v, i) => (
-          <g key={i}>
+          <g key={`hgrid-${i}`}>
             <line x1={PAD.left} y1={py(v)} x2={W - PAD.right} y2={py(v)}
-              stroke="#1f2937" strokeWidth="1" />
-            <text x={PAD.left - 7} y={py(v) + 4} fill="#4b5563" fontSize="9" textAnchor="end">
-              {v.toFixed(3)}
-            </text>
-          </g>
-        ))}
-        {xTickVals.map((v, i) => (
-          <g key={i}>
-            <line x1={px(v)} y1={PAD.top} x2={px(v)} y2={PAD.top + plotH}
-              stroke="#1f2937" strokeWidth="1" />
-            <text x={px(v)} y={PAD.top + plotH + 14} fill="#4b5563" fontSize="9" textAnchor="middle">
-              {v.toFixed(1)}s
-            </text>
+              stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4,4" />
           </g>
         ))}
 
         {/* Setpoints */}
         {data.sp_pitch && (
-          <path d={toPath(data.sp_pitch, data.time)} fill="none" stroke="#4ade80"
-            strokeWidth="1.5" strokeDasharray="7,4" opacity="0.8" />
+          <path d={toPath(data.sp_pitch, data.time)} fill="none" stroke="#000000"
+            strokeWidth="2.0" strokeDasharray="5,5" />
         )}
         {data.sp_yaw && (
-          <path d={toPath(data.sp_yaw, data.time)} fill="none" stroke="#4ade80"
-            strokeWidth="1.5" strokeDasharray="7,4" opacity="0.8" />
+          <path d={toPath(data.sp_yaw, data.time)} fill="none" stroke="#000000"
+            strokeWidth="2.0" strokeDasharray="5,5" />
         )}
 
-        {/* LQR */}
+        {/* LQR (Blue) */}
         {data.lqr_pitch && (
-          <path d={toPath(data.lqr_pitch, data.time)} fill="none" stroke="#60a5fa" strokeWidth="2.2" />
+          <path d={toPath(data.lqr_pitch, data.time)} fill="none" stroke="#1f77b4" strokeWidth="2.5" />
         )}
         {data.lqr_yaw && (
-          <path d={toPath(data.lqr_yaw, data.time)} fill="none" stroke="#93c5fd"
-            strokeWidth="2" strokeDasharray="5,3" />
+          <path d={toPath(data.lqr_yaw, data.time)} fill="none" stroke="#1f77b4"
+            strokeWidth="2.5" strokeDasharray="2,3" />
         )}
 
-        {/* PID */}
+        {/* PID (Red) */}
         {data.pid_pitch && (
-          <path d={toPath(data.pid_pitch, data.time)} fill="none" stroke="#f87171" strokeWidth="2.2" />
+          <path d={toPath(data.pid_pitch, data.time)} fill="none" stroke="#d62728"
+            strokeWidth="2.5" strokeDasharray="6,2,2,2" />
         )}
         {data.pid_yaw && (
-          <path d={toPath(data.pid_yaw, data.time)} fill="none" stroke="#fca5a5"
-            strokeWidth="2" strokeDasharray="5,3" />
+          <path d={toPath(data.pid_yaw, data.time)} fill="none" stroke="#d62728"
+            strokeWidth="2.5" strokeDasharray="8,4" />
         )}
 
-        {/* Axis labels */}
-        <text transform={`translate(13,${H / 2}) rotate(-90)`} fill="#6b7280" fontSize="9" textAnchor="middle">
+        {/* X and Y Axes (Bottom & Left Spines) */}
+        <path d={`M ${PAD.left} ${PAD.top} L ${PAD.left} ${PAD.top + plotH} L ${W - PAD.right} ${PAD.top + plotH}`} 
+          fill="none" stroke="#000000" strokeWidth="1.2" />
+
+        {/* Y-Axis Ticks & Labels */}
+        {yTickVals.map((v, i) => (
+          <g key={`yax-${i}`}>
+            <line x1={PAD.left - 4} y1={py(v)} x2={PAD.left} y2={py(v)} stroke="#000000" strokeWidth="1.2" />
+            <text x={PAD.left - 6} y={py(v) + 3} fill="#000000" fontSize="10" fontFamily="serif" textAnchor="end">
+              {v.toFixed(3)}
+            </text>
+          </g>
+        ))}
+
+        {/* X-Axis Ticks & Labels */}
+        {xTickVals.map((v, i) => (
+          <g key={`xax-${i}`}>
+            <line x1={px(v)} y1={PAD.top + plotH} x2={px(v)} y2={PAD.top + plotH + 4} stroke="#000000" strokeWidth="1.2" />
+            <text x={px(v)} y={PAD.top + plotH + 16} fill="#000000" fontSize="10" fontFamily="serif" textAnchor="middle">
+              {v.toFixed(1)}
+            </text>
+          </g>
+        ))}
+
+        {/* Axis Titles */}
+        <text transform={`translate(16,${H / 2}) rotate(-90)`} fill="#000000" fontSize="11" fontFamily="serif" textAnchor="middle" fontWeight="bold">
           {yLabel}
         </text>
-        <text x={W / 2} y={H - 4} fill="#6b7280" fontSize="9" textAnchor="middle">Time (s)</text>
-
-        {/* Plot border */}
-        <rect x={PAD.left} y={PAD.top} width={plotW} height={plotH}
-          fill="none" stroke="#374151" strokeWidth="1" />
+        <text x={W / 2} y={H - 6} fill="#000000" fontSize="11" fontFamily="serif" textAnchor="middle" fontWeight="bold">
+          Time (s)
+        </text>
       </svg>
     </div>
   );
@@ -188,21 +196,21 @@ function MetricCard({ label, lqrVal, pidVal, unit = 'rad', higherBetter = false 
 // ─────────────────────────────────────────────────────────────
 function Legend() {
   const items = [
-    { color: '#60a5fa', dash: false, label: 'LQR – Pitch' },
-    { color: '#93c5fd', dash: true,  label: 'LQR – Yaw' },
-    { color: '#f87171', dash: false, label: 'PID – Pitch' },
-    { color: '#fca5a5', dash: true,  label: 'PID – Yaw' },
-    { color: '#4ade80', dash: true,  label: 'Setpoint' },
+    { color: '#1f77b4', dash: 'none',    label: 'LQR – Pitch' },
+    { color: '#1f77b4', dash: '2,3',     label: 'LQR – Yaw' },
+    { color: '#d62728', dash: '6,2,2,2', label: 'PID – Pitch' },
+    { color: '#d62728', dash: '8,4',     label: 'PID – Yaw' },
+    { color: '#000000', dash: '5,5',     label: 'Setpoint' },
   ];
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginBottom: 14 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 24px', marginBottom: 14, background: '#ffffff', padding: '12px 16px', borderRadius: 8, border: '1px solid #e5e7eb' }}>
       {items.map(({ color, dash, label }) => (
-        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <svg width="26" height="12">
-            <line x1="0" y1="6" x2="26" y2="6" stroke={color} strokeWidth="2"
-              strokeDasharray={dash ? '5,3' : 'none'} />
+        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg width="30" height="12">
+            <line x1="0" y1="6" x2="30" y2="6" stroke={color} strokeWidth="2.2"
+              strokeDasharray={dash} />
           </svg>
-          <span style={{ color: '#9ca3af', fontSize: 11 }}>{label}</span>
+          <span style={{ color: '#000000', fontSize: 12, fontFamily: 'serif', fontWeight: 500 }}>{label}</span>
         </div>
       ))}
     </div>
@@ -238,15 +246,15 @@ function ScenarioPanel({ scKey, scData, label }) {
       <Legend />
 
       {/* Charts side-by-side */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
         <LineChart 
           data={{ ...scData, lqr_yaw: undefined, pid_yaw: undefined, sp_yaw: undefined }} 
-          title="📐 Trục Pitch" yLabel="Góc (rad)" height={280} 
+          title="📐 Trục Pitch" yLabel="Góc (rad)" height={360} 
         />
         <LineChart
           data={{ ...scData, lqr_pitch: undefined, pid_pitch: undefined, sp_pitch: undefined }}
           title="⚡ Trục Yaw — Nhiễu Chéo (Setpoint = 0)"
-          yLabel="Góc (rad)" height={280}
+          yLabel="Góc (rad)" height={360}
         />
       </div>
 
@@ -268,7 +276,7 @@ function ConfigInput({ label, value, onChange, step, min, max }) {
       <label style={{ color: '#9ca3af', fontSize: 11, marginBottom: 4, display: 'block' }}>{label}</label>
       <input
         type="number" step={step} min={min} max={max} value={value}
-        onChange={e => onChange(parseFloat(e.target.value))}
+        onChange={e => onChange(e.target.value)}
         style={{
           background: 'rgba(0,0,0,0.35)', border: '1px solid #374151', color: 'white',
           padding: '6px 10px', borderRadius: 6, width: '100%', fontSize: 13,

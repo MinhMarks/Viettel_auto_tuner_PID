@@ -169,3 +169,142 @@ You must strictly adhere to the following rules for every output:
 ### 10.5 Linearization Rigor
 - When describing the transition from a non-linear physical model to a linear state-space representation (e.g., for LQR), you MUST explicitly formulate the first-order Taylor series expansion using Jacobian matrices around the equilibrium point $\mathbf{x}_0 = \mathbf{0}, \mathbf{u}_0 = \mathbf{0}$:
   $$\mathbf{A} = \left. \frac{\partial f(\mathbf{x}, \mathbf{u})}{\partial \mathbf{x}} \right|_{\mathbf{x}_0, \mathbf{u}_0}, \quad \mathbf{B} = \left. \frac{\partial f(\mathbf{x}, \mathbf{u})}{\partial \mathbf{u}} \right|_{\mathbf{x}_0, \mathbf{u}_0}$$
+
+## 11. Bilingual Technical Writing Rules (Vietnamese - English)
+
+When writing R&D Technical Reports in Vietnamese, strictly adhere to the following rules to ensure academic rigor and avoid literal, clumsy translations:
+
+### 11.1 No Literal Translation (Giữ nguyên gốc + Mở ngoặc)
+- Never translate core algorithm names or international methods into Vietnamese. Keep them in English and append the acronym in parentheses at first mention.
+- Example: Use "Thuật toán Particle Swarm Optimization (PSO)" instead of "Thuật toán tối ưu hóa bầy đàn". For subsequent mentions, use the acronym (e.g., "PSO").
+
+### 11.2 Mandatory Terminology Mapping (Bảng Mapping bắt buộc)
+- You MUST strictly use the following Vietnamese R&D vocabulary:
+  - "Cross-coupling effect" -> "Hiện tượng tương tác chéo" (or "ảnh hưởng liên kênh")
+  - "Gain Scheduling" -> "Cơ chế tuyến tính hóa từng vùng" (or "phân đoạn tăng ích")
+  - "Robustness" -> "Độ bền vững" (or "tính bền vững của hệ thống")
+  - "Actuator Saturation" -> "Bão hòa cơ cấu chấp hành"
+  - "State-Feedback" -> "Phản hồi trạng thái toàn phần"
+  - "Feed-forward control" -> "Điều khiển tiền định" (or "bù tiền định")
+  - "Overshoot" -> "Độ vọt lố"
+  - "Settling time" -> "Thời gian xác lập"
+  - "Transient response" -> "Đáp ứng quá độ"
+- Do NOT use clumsy translations like "ghép chéo", "bắn quá bến", "thời gian lắng", "bão hòa bộ kích hoạt", etc.
+
+### 11.3 Natural Sentence Flow (Động từ hóa linh hoạt)
+- Do not stick rigidly to English noun-adjunct structures. Smooth the text by adding operational verbs like "quá trình", "khảo sát", "đánh giá", "thực thi".
+- Example: Instead of "Xác thực mô phỏng trong vòng lặp", write "Quá trình kiểm chứng và đánh giá trên môi trường mô phỏng vòng lặp kín (Simulation-in-the-loop)".
+
+### 11.4 Object-Oriented Syntax (Cấu trúc Chủ động và Khách quan)
+- Never use personal pronouns ("Tôi", "Chúng tôi", "Nhóm nghiên cứu").
+- Ensure the system, the algorithm, or the mathematical model serves as the active subject of the sentence.
+- Example: "Thuật toán LQR chủ động tính toán và điều tiết biên độ điện áp nạp vào cơ cấu chấp hành" instead of "Chúng tôi dùng thuật toán LQR để tính ra điện áp".
+
+### 11.5 Acronym Control (Quản lý từ viết tắt)
+- Each time an English acronym (e.g., MIMO, SISO, LQR, PID) is used in a Vietnamese sentence, automatically check if it was defined previously in the chapter. If not, write it out explicitly.
+- Example: "...hệ thống điều khiển đa biến Multi-Input Multi-Output (MIMO)..."
+
+## 12. Pseudocode and Figures/Diagrams Strict Rules (A* Standard)
+
+## 💻 PHẦN 1: Các Quy tắc viết Mã giả (Pseudocode) chuẩn A*
+
+Nhật hãy ép Agent sử dụng môi trường chuẩn trong LaTeX (như gói `algorithm2e` hoặc `algorithmicx`) và tuân thủ các luật sau:
+
+### Rule 1: Khai báo tường minh Input/Output (Không nhảy bổ vào viết lệnh)
+
+Mở đầu thuật toán luôn luôn phải có hai phần: **Input** (Dữ liệu đầu vào, hằng số cấu hình) và **Output** (Kết quả thuật toán nhè ra sau khi kết thúc).
+
+* **Yêu cầu:** Tất cả biến số trong Input/Output phải ghi rõ miền không gian toán học ($\in \mathbb{R}$).
+* *Ví dụ:* * **Input:** Ma trận hệ thống $\tilde{\mathbf{A}}, \tilde{\mathbf{B}}$, ma trận phạt $\mathbf{Q} \in \mathbb{R}^{6\times6}, \mathbf{R} \in \mathbb{R}^{2\times2}$, kích thước bầy đàn $N_p$, số vòng lặp tối đa $I_{\max}$.
+* **Output:** Ma trận tăng ích tối ưu $\mathbf{K}^* \in \mathbb{R}^{2\times6}$.
+
+### Rule 2: Toán học hóa biến số (Cấm dùng biến phong cách lập trình)
+
+Mã giả trong paper A* bắt buộc phải đồng bộ 100% với các ký hiệu ký tự ở chương lý thuyết. Không được giữ nguyên tên biến kiểu code Dev.
+
+* **Sai (Cấm dùng):** `theta_dot = update_speed()`, `error_p = ref - cur`, `if V_pitch > 24:`
+* **Đúng (Bắt buộc):** $\dot{\theta} \leftarrow \text{UpdateSpeed}()$, $\mathbf{e}_p \leftarrow \theta_d - \theta$, **if** $V_p > 24$ **then**
+
+### Rule 3: Sử dụng các hàm toán học trừu tượng thay vì viết chi tiết code nền
+
+Mã giả sinh ra để người ta hiểu **Tư duy thuật toán**, không phải để máy tính chạy trực tiếp. Do đó, các bước tính toán trung gian nên được viết dưới dạng các hàm toán học (Operators).
+
+* *Ví dụ:* Thay vì viết một vòng lặp dài để nhân ma trận tính tổng điểm phạt sai số ITAE, hãy viết gọn:
+
+$$\text{Fitness}_i \leftarrow \text{EvaluateCost}(\mathbf{x}_i, \mathbf{u}_i)$$
+
+Hoặc phép giải Riccati: $\mathbf{P} \leftarrow \text{SolveRiccati}(\tilde{\mathbf{A}}, \tilde{\mathbf{B}}, \mathbf{Q}, \mathbf{R})$.
+
+### Rule 4: Quy ước ký hiệu gán và đánh số dòng rõ ràng
+
+* Sử dụng mũi tên trái `<-` hoặc `\leftarrow` cho phép gán giá trị (Assignment), hạn chế dùng dấu `=` vì dấu `=` trong toán học dùng cho phương trình thiết lập.
+* Tất cả các dòng lệnh logic trong vòng lặp (`for`, `while`, `if-else`) phải được đánh số thứ tự tự động để phần thuyết minh trong văn bản chính dễ dàng trích dẫn (ví dụ: *"Như được mô tả tại Dòng 5 của Thuật toán 1..."*).
+
+---
+
+## 🖼️ PHẦN 2: Các Quy tắc hoàn thiện Hình ảnh và Đồ thị kết quả
+
+Đối với đồ thị kết quả (Plots) và sơ đồ cấu trúc hệ thống (Diagrams), Agent phải kiểm tra các tiêu chuẩn khắt khe sau:
+
+### Rule 1: Quy tắc "Độc lập Thông tin" của Caption (Self-Explanatory)
+
+Reviewer hạng A* có thể không đọc toàn bộ bài của Nhật, nhưng họ sẽ nhìn hình và đọc Caption. Caption phải giải thích đầy đủ: **Tên hình + Kịch bản/Điều kiện thử nghiệm + Chỉ rõ các đường màu đại diện cho cái gì.**
+
+* **Cấm viết:** `\caption{Đồ thị đáp ứng góc Pitch.}`
+* **Phải viết:** `\caption{Đáp ứng động học của góc Pitch ($\theta$) dưới tác động của mô-men nhiễu gió ngẫu nhiên, so sánh đối chứng giữa cấu trúc đề xuất Augmented LQR (đường nét liền xanh) và bộ điều khiển AI-PID (đường nét đứt đỏ).}`
+
+### Rule 2: Thống nhất Typography (Font chữ) giữa Hình và Văn bản
+
+* Chữ inside hình ảnh (nhãn trục X, trục Y, chú thích Legend) **bắt buộc phải cùng họ Font với văn bản chính của paper** (thường là `Times New Roman` trong LaTeX).
+* Kích thước chữ (Font size) trong hình không được nhỏ hơn quá 2pt so với text chính của bài báo (Đảm bảo khi co giãn hình vừa khít 1 cột, người đọc vẫn thấy rõ ràng mà không cần zoom).
+
+### Rule 3: Vượt qua bài kiểm tra "In ấn Đen - Trắng" (Grayscale Test)
+
+Không bao giờ phân biệt các đường tín hiệu chỉ bằng màu sắc. Bắt buộc phải phối hợp **Định dạng nét vẽ (Line Styles / Markers)**.
+
+* *Cấu hình vẽ:* Đường mục tiêu (Reference) dùng nét đứt đen (`'k--'`), LQR dùng nét liền xanh (`'b-'`), PID dùng nét chấm gạch đỏ (`'r-.'`). Khi in ra giấy trắng đen, các đường này vẫn hiển thị tách biệt rõ ràng.
+
+### Rule 4: Trích dẫn Vòng kín (No Naked Figures)
+
+Không được có bất kỳ hình ảnh nào nằm bơ vơ. Mọi hình ảnh xuất hiện đều phải được gọi tên và phân tích định lượng trong văn bản chính bằng các trạng từ kết nối học thuật.
+
+* Sử dụng nhãn chuẩn: **Hình 1**, **Hình 2** (hoặc **Fig. 1**, **Fig. 2**).
+* **Văn phong chuẩn:** *"...hiện tượng tương tác chéo được triệt tiêu mượt mà như minh họa trong Hình \ref{fig:decoupling}, tại đó độ vọt lố giảm đáng kể..."* (Cấm dùng các từ như "hình dưới", "hình sau").
+
+
+## 13. Experiment Rules (A* Standard)
+
+### Rule 1: Minh bạch cấu hình nền tảng (Environmental & Parametric Transparency)
+Mở đầu chương Experiment, Agent bắt buộc phải thiết lập một tiểu mục (Subsection) để khai báo toàn bộ thông số phần cứng và môi trường mô phỏng. Liệt kê đầy đủ thông số vật lý của trực thăng Quanser (khối lượng, chiều dài đòn, mô-men quán tính), thời gian trích mẫu ($\Delta t = 0.001	ext{s}$), thuật toán giải số vi phân (RK45), phần cứng chạy tối ưu. Phải ghi rõ phương trình hoặc phân phối của nhiễu gió và nhiễu cảm biến.
+
+### Rule 2: Đa dạng hóa Quỹ đạo thử thách (Benchmark Trajectories)
+Đánh giá trên tối thiểu 3 loại quỹ đạo có độ khó tăng dần:
+1. **Square Wave (Sóng vuông):** Đánh giá phản xạ đáp ứng nhanh (Rise time) và khả năng dập tắt dao động.
+2. **Sine Wave (Sóng Sin):** Đánh giá năng lực bám liên tục và độ trễ pha động học.
+3. **Multi-step / Complex Path (Chuỗi bậc thang):** Đánh giá tính bền vững (Robustness) khi điểm cân bằng thay đổi liên tục.
+
+### Rule 3: Quy tắc Đánh giá Định lượng (Quantitative Analysis Over Qualitative)
+Tuyệt đối cấm viết các câu nhận xét mang tính cảm tính, chung chung. Tất cả các so sánh phải đi kèm số liệu phần trăm hoặc biên độ cụ thể từ bảng dữ liệu.
+
+### Rule 4: Sử dụng Chỉ số Đánh giá Chuẩn mực Quốc tế (Standard Performance Metrics)
+Chấm điểm bằng các chỉ số:
+* **ITAE (Integral of Time-multiplied Absolute Error)**
+* **SSE (Steady-State Error)**
+* **CE (Control Effort)**
+* **Rise Time ($), Settling Time ($), Maximum Overshoot ($)**
+
+### Rule 5: Phương pháp luận Thống kê cho Thuật toán AI (Statistical Rigor)
+Tuyệt đối không lấy kết quả của một lần chạy duy nhất. Bắt buộc chạy 30 lần độc lập (30 independent runs). Kết quả biểu diễn dưới dạng Giá trị trung bình $\pm$ Độ lệch chuẩn ($\mu \pm \sigma$).
+
+### System Prompt for Experiment Section
+1. ABSOLUTE TRANSPARENCY: Ensure a dedicated subsection details all physical parameters, solver settings, and noise bounds.
+2. QUANTITATIVE ANALYSIS: Eliminate all vague, qualitative descriptions.
+3. STANDARDIZED METRICS: Structure the discussion around formal control metrics.
+4. STATISTICAL RIGOR: Enforce reporting of metrics using Mean $\pm$ Standard Deviation across multiple runs.
+5. TRAJECTORY-SPECIFIC CRITIQUE: Differentiate analysis between step-response tracks and continuous tracking.
+
+### Experiment Check-list
+1. Đồng bộ hóa biến số trong bảng kết quả giống 100% biến số trong chương lý thuyết.
+2. Làm sạch các số liệu bất thường.
+3. Biểu đồ hội tụ (Convergence Plot) cho 4 thuật toán.
+4. Đồ thị đổi sang font Times New Roman, phân biệt nét vẽ.

@@ -30,6 +30,76 @@ def calculate_metrics(time, response, setpoint, control_effort):
     if len(time) == 0:
         return metrics
         
+    # Support for dynamic setpoints (array)
+    is_dynamic_setpoint = isinstance(setpoint, (list, np.ndarray))
+    
+    if is_dynamic_setpoint:
+        setpoint_arr = np.array(setpoint)
+        if len(setpoint_arr) != len(response):
+            # Fallback to scalar if lengths don't match
+            setpoint_scalar = setpoint[-1] if len(setpoint_arr) > 0 else 0
+            return calculate_metrics(time, response, setpoint_scalar, control_effort)
+            
+        dt = time[1] - time[0] if len(time) > 1 else 0.002
+        error = np.abs(response - setpoint_arr)
+        
+        metrics["steady_state_error"] = float(error[-1])
+        metrics["control_energy"] = float(np.sum(control_effort**2) * dt)
+        metrics["itae"] = float(np.sum(time * error) * dt)
+        
+        # --- Compute classical metrics on the FIRST constant segment ---
+        sp_first = setpoint_arr[0]
+        # Find where setpoint changes (tolerance 1e-6)
+        diff_idx = np.where(np.abs(setpoint_arr - sp_first) > 1e-6)[0]
+        idx_change = diff_idx[0] if len(diff_idx) > 0 else len(setpoint_arr)
+        
+        # Only compute if the segment is long enough and not zero
+        if idx_change > 10 and abs(sp_first) > 1e-4:
+            time_seg = time[:idx_change]
+            response_seg = response[:idx_change]
+            
+            # 1. Rise Time
+            lower_bound = 0.1 * sp_first
+            upper_bound = 0.9 * sp_first
+            
+            if sp_first > 0:
+                idx_10 = np.where(response_seg >= lower_bound)[0]
+                idx_90 = np.where(response_seg >= upper_bound)[0]
+            else:
+                idx_10 = np.where(response_seg <= lower_bound)[0]
+                idx_90 = np.where(response_seg <= upper_bound)[0]
+                
+            if len(idx_10) > 0 and len(idx_90) > 0:
+                t_10 = time_seg[idx_10[0]]
+                t_90 = time_seg[idx_90[0]]
+                if t_90 > t_10:
+                    metrics["rise_time"] = float(t_90 - t_10)
+                    
+            # 2. Overshoot
+            if sp_first > 0:
+                max_val = np.max(response_seg)
+                if max_val > sp_first:
+                    metrics["overshoot"] = float(((max_val - sp_first) / sp_first) * 100)
+            else:
+                min_val = np.min(response_seg)
+                if min_val < sp_first:
+                    metrics["overshoot"] = float(((min_val - sp_first) / sp_first) * 100)
+                    
+            # 3. Settling Time
+            settling_band = 0.05 * abs(sp_first)
+            error_seg = np.abs(response_seg - sp_first)
+            outside_band_idx = np.where(error_seg > settling_band)[0]
+            
+            if len(outside_band_idx) > 0:
+                last_outside_idx = outside_band_idx[-1]
+                if last_outside_idx + 1 < len(time_seg):
+                    metrics["settling_time"] = float(time_seg[last_outside_idx + 1])
+            else:
+                metrics["settling_time"] = 0.0
+                
+        return metrics
+
+    # --- Scalar setpoint logic ---
     if setpoint == 0:
         # Edge case, if setpoint is 0, normal % calculations fail
         steady_state_error = abs(response[-1])

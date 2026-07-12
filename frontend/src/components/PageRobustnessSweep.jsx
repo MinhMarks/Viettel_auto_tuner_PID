@@ -7,7 +7,7 @@ import GlobalConfigPanel from './GlobalConfigPanel';
 
 const API_BASE = 'http://localhost:8088/api';
 
-export default function PageRobustness() {
+export default function PageRobustnessSweep() {
     const {
         manualParams, setManualParams,
         tunedParams,
@@ -151,7 +151,7 @@ export default function PageRobustness() {
                     </div>
                     <div className="form-group" style={{marginBottom: 0, width: 120}}>
                         <label style={{fontSize: 12, color: '#ffffff'}}>Number of Configs</label>
-                        <input type="number" min="2" value={steps} onChange={e => setSteps(parseInt(e.target.value))} />
+                        <input type="number" min="2" value={steps} onChange={e => setSteps(e.target.value)} />
                     </div>
                     <button className="primary" onClick={handleRunSweep} disabled={loading} style={{height: 40}}>
                         {loading ? <div className="loader"/> : <><ShieldCheck size={16}/> Run Sweep</>}
@@ -171,10 +171,10 @@ export default function PageRobustness() {
                             <tr key={key} style={{borderBottom: '1px solid #333'}}>
                                 <td style={{padding: '8px 4px', color: '#ffffff', fontWeight: 'bold'}}>{paramLabels[key]}</td>
                                 <td style={{padding: '8px 4px'}}>
-                                    <input type="number" step="0.01" value={disturbances[key]} onChange={e => setDisturbances({...disturbances, [key]: parseFloat(e.target.value)})} style={{width: '100%', padding: '6px 8px'}} />
+                                    <input type="number" step="0.01" value={disturbances[key]} onChange={e => setDisturbances({...disturbances, [key]: e.target.value})} style={{width: '100%', padding: '6px 8px'}} />
                                 </td>
                                 <td style={{padding: '8px 4px'}}>
-                                    <input type="number" step="0.01" value={increments[key]} onChange={e => setIncrements({...increments, [key]: parseFloat(e.target.value)})} style={{width: '100%', padding: '6px 8px'}} />
+                                    <input type="number" step="0.01" value={increments[key]} onChange={e => setIncrements({...increments, [key]: e.target.value})} style={{width: '100%', padding: '6px 8px'}} />
                                 </td>
                             </tr>
                         ))}

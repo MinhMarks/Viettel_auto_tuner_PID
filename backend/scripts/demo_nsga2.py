@@ -21,7 +21,7 @@ from core.pid_controller import DecentralizedPID
 # 5. "Pitch_SSE": Sai số xác lập (Steady State Error) riêng của trục Pitch
 # 6. "Yaw_SSE": Sai số xác lập (Steady State Error) riêng của trục Yaw
 # =================================================================
-SELECTED_OBJECTIVES = ["Pitch_SSE", "Yaw_SSE"] # ["ITAE", "Energy", "Overshoot"] # Thử xóa "Overshoot" để vẽ 2D
+SELECTED_OBJECTIVES = ["Pitch_ITAE", "Yaw_Energy"] # ["ITAE", "Energy", "Overshoot"] # Thử xóa "Overshoot" để vẽ 2D
 
 class HelicopterMultiObjectiveProblem(Problem):
     def __init__(self):
@@ -63,8 +63,10 @@ class HelicopterMultiObjectiveProblem(Problem):
             steps = int(self.t_max / self.dt)
             state = [0.0, 0.0, 0.0, 0.0]
             
-            itae = 0.0
-            energy = 0.0
+            itae_pitch = 0.0
+            itae_yaw = 0.0
+            energy_pitch = 0.0
+            energy_yaw = 0.0
             max_pitch = 0.0
             max_yaw = 0.0
             
@@ -75,14 +77,17 @@ class HelicopterMultiObjectiveProblem(Problem):
                 error_pitch = abs(self.setpoint_pitch - pitch)
                 error_yaw = abs(self.setpoint_yaw - yaw)
                 
-                itae += t * (error_pitch + error_yaw) * self.dt
+                itae_pitch += t * error_pitch * self.dt
+                itae_yaw += t * error_yaw * self.dt
                 
                 if abs(pitch) > max_pitch: max_pitch = abs(pitch)
                 if abs(yaw) > max_yaw: max_yaw = abs(yaw)
                 
                 if abs(pitch) > np.pi or abs(yaw) > np.pi:
-                    itae += 10000.0 # Heavy Penalty for crashing/spinning
-                    energy += 10000.0
+                    itae_pitch += 10000.0 # Heavy Penalty for crashing/spinning
+                    itae_yaw += 10000.0
+                    energy_pitch += 10000.0
+                    energy_yaw += 10000.0
                     max_pitch = 10.0 # Penalty overshoot
                     max_yaw = 10.0
                     break
@@ -91,7 +96,8 @@ class HelicopterMultiObjectiveProblem(Problem):
                 v_pitch = np.clip(v_pitch_raw, env.V_min, env.V_max)
                 v_yaw = np.clip(v_yaw_raw, env.V_min, env.V_max)
                 
-                energy += (v_pitch**2 + v_yaw**2) * self.dt
+                energy_pitch += (v_pitch**2) * self.dt
+                energy_yaw += (v_yaw**2) * self.dt
                 
                 state = env.simulate_step(state, v_pitch, v_yaw, self.dt)
                 
@@ -105,8 +111,12 @@ class HelicopterMultiObjectiveProblem(Problem):
             
             # Gom tất cả kết quả vào dictionary
             metrics = {
-                "ITAE": itae / self.J1_MAX,
-                "Energy": energy / self.J2_E_MAX,
+                "ITAE": (itae_pitch + itae_yaw) / self.J1_MAX,
+                "Pitch_ITAE": itae_pitch / (self.J1_MAX / 2.0),
+                "Yaw_ITAE": itae_yaw / (self.J1_MAX / 2.0),
+                "Energy": (energy_pitch + energy_yaw) / self.J2_E_MAX,
+                "Pitch_Energy": energy_pitch / (self.J2_E_MAX / 2.0),
+                "Yaw_Energy": energy_yaw / (self.J2_E_MAX / 2.0),
                 "Overshoot": (overshoot_pitch + overshoot_yaw) / 2.0,
                 "SSE": (sse_pitch + sse_yaw) / 2.0,
                 "Pitch_SSE": sse_pitch,
@@ -124,12 +134,12 @@ def run_nsga2_demo():
     problem = HelicopterMultiObjectiveProblem()
     
     # Population of 20
-    algorithm = NSGA2(pop_size=50)
+    algorithm = NSGA2(pop_size=30)
     
     # 20 generations for a quick demo
     res = minimize(problem,
                    algorithm,
-                   ('n_gen', 50),
+                   ('n_gen', 40),
                    seed=1,
                    verbose=True)
                    
@@ -144,29 +154,73 @@ def run_nsga2_demo():
         print(f"Nghiệm {idx + 1}: {metrics_str}")
     print("--------------------------------------------\n")
     
+    # Cấu hình chuẩn đồ thị A*
+    plt.rcParams['font.family'] = 'serif'
+    
     if n_obj == 2:
         # Plotting the Pareto Front (2D)
-        plt.figure(figsize=(8, 6))
-        plt.scatter(res.F[:, 0], res.F[:, 1], s=40, facecolors='none', edgecolors='blue')
-        plt.title(f"Pareto Front: {SELECTED_OBJECTIVES[0]} vs {SELECTED_OBJECTIVES[1]} (NSGA-II)")
-        plt.xlabel(f"Normalized {SELECTED_OBJECTIVES[0]}")
-        plt.ylabel(f"Normalized {SELECTED_OBJECTIVES[1]}")
-        plt.grid(True)
-        plt.savefig("nsga2_pareto_front_2d.png", dpi=300)
-        print("Saved Pareto front plot to nsga2_pareto_front_2d.png")
+        fig, ax = plt.subplots(figsize=(8, 6))
+        
+        # Gridlines: Only horizontal/vertical, light grey, dashed, behind data
+        ax.grid(True, which='major', axis='both', color='#E0E0E0', linestyle='--', zorder=0)
+        
+        # Scatter: using colorblind-friendly blue '#0072B2', distinct marker
+        ax.scatter(res.F[:, 0], res.F[:, 1], s=50, facecolors='none', edgecolors='#0072B2', marker='o', zorder=3)
+        
+        # Spines: remove top and right
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        
+        # Typography
+        ax.set_xlabel(f"Normalized {SELECTED_OBJECTIVES[0]}", fontsize=14)
+        ax.set_ylabel(f"Normalized {SELECTED_OBJECTIVES[1]}", fontsize=14)
+        ax.tick_params(axis='both', which='major', labelsize=12)
+        
+        # Prevent tick label overlapping for small values
+        from matplotlib.ticker import MaxNLocator
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
+        ax.ticklabel_format(style='sci', scilimits=(-3, 3), axis='both')
+        plt.tight_layout()
+        
+        # Export as PDF with bbox_inches='tight'
+        plt.savefig("nsga2_pareto_front_2d.pdf", format='pdf', bbox_inches='tight')
+        print("Saved Pareto front plot to nsga2_pareto_front_2d.pdf")
         
     elif n_obj == 3:
         # Plotting the Pareto Front (3D)
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(res.F[:, 0], res.F[:, 1], res.F[:, 2], s=40, facecolors='none', edgecolors='blue')
-        ax.set_title(f"Pareto Front: {SELECTED_OBJECTIVES[0]} vs {SELECTED_OBJECTIVES[1]} vs {SELECTED_OBJECTIVES[2]} (NSGA-II)")
-        ax.set_xlabel(f"Normalized {SELECTED_OBJECTIVES[0]}")
-        ax.set_ylabel(f"Normalized {SELECTED_OBJECTIVES[1]}")
-        ax.set_zlabel(f"Normalized {SELECTED_OBJECTIVES[2]}")
-        plt.grid(True)
-        plt.savefig("nsga2_pareto_front_3d.png", dpi=300)
-        print("Saved Pareto front plot to nsga2_pareto_front_3d.png")
+        
+        # Scatter: using colorblind-friendly blue '#0072B2'
+        ax.scatter(res.F[:, 0], res.F[:, 1], res.F[:, 2], s=50, facecolors='none', edgecolors='#0072B2', marker='o', zorder=3)
+        
+        # Typography
+        ax.set_xlabel(f"Normalized {SELECTED_OBJECTIVES[0]}", fontsize=14)
+        ax.set_ylabel(f"Normalized {SELECTED_OBJECTIVES[1]}", fontsize=14)
+        ax.set_zlabel(f"Normalized {SELECTED_OBJECTIVES[2]}", fontsize=14)
+        ax.tick_params(axis='both', which='major', labelsize=12)
+        
+        # Prevent tick label overlapping for small values
+        from matplotlib.ticker import MaxNLocator
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
+        ax.zaxis.set_major_locator(MaxNLocator(nbins=5))
+        ax.ticklabel_format(style='sci', scilimits=(-3, 3), axis='both')
+        ax.ticklabel_format(style='sci', scilimits=(-3, 3), axis='z')
+        plt.tight_layout()
+        
+        # 3D Gridlines and Pane Color
+        ax.xaxis._axinfo["grid"].update({"color": "#E0E0E0", "linestyle": "--"})
+        ax.yaxis._axinfo["grid"].update({"color": "#E0E0E0", "linestyle": "--"})
+        ax.zaxis._axinfo["grid"].update({"color": "#E0E0E0", "linestyle": "--"})
+        ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+        
+        # Export as PDF with bbox_inches='tight'
+        plt.savefig("nsga2_pareto_front_3d.pdf", format='pdf', bbox_inches='tight')
+        print("Saved Pareto front plot to nsga2_pareto_front_3d.pdf")
     else:
         print(f"Cannot plot for {n_obj} objectives. Only 2D and 3D are supported.")
 

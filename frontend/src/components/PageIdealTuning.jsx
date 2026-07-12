@@ -58,101 +58,123 @@ function ConsolidatedMetricsTable({ seriesData }) {
     );
 }
 
-function TimeResponseChart({ title, dataSeries, timeAxis, spPitchData, spYawData, height = 300 }) {
+function TimeResponseChart({ title, dataSeries, timeAxis, spPitchData, spYawData, height = 400 }) {
     const series = [];
     const legendPitch = [];
     const legendYaw = [];
 
-    dataSeries.forEach(ds => {
+    const symbols = ['circle', 'rect', 'triangle', 'diamond', 'pin', 'arrow'];
+    const dashTypes = ['solid', 'dashed', 'dotted', [5,5], [10,5]];
+
+    dataSeries.forEach((ds, idx) => {
         if (!ds.data) return;
-        series.push({ name: `${ds.name} P`, type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: ds.data.pitch.map(p => (p * 180 / Math.PI).toFixed(2)), smooth: true, itemStyle: { color: ds.colorP } });
-        series.push({ name: `${ds.name} Y`, type: 'line', xAxisIndex: 1, yAxisIndex: 1, data: ds.data.yaw.map(p => (p * 180 / Math.PI).toFixed(2)), smooth: true, itemStyle: { color: ds.colorY } });
+        const sym = symbols[idx % symbols.length];
+        const lineT = dashTypes[idx % dashTypes.length];
+        series.push({ name: `${ds.name} P`, type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: ds.data.pitch.map(p => (p * 180 / Math.PI).toFixed(2)), smooth: true, itemStyle: { color: ds.colorP }, symbol: sym, symbolSize: 8, lineStyle: { type: lineT, width: 3 } });
+        series.push({ name: `${ds.name} Y`, type: 'line', xAxisIndex: 1, yAxisIndex: 1, data: ds.data.yaw.map(p => (p * 180 / Math.PI).toFixed(2)), smooth: true, itemStyle: { color: ds.colorY }, symbol: sym, symbolSize: 8, lineStyle: { type: lineT, width: 3 } });
         legendPitch.push(`${ds.name} P`);
         legendYaw.push(`${ds.name} Y`);
     });
 
     if (spPitchData && spYawData && timeAxis.length > 0) {
-        series.push({ name: 'Target P', type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: spPitchData, lineStyle: { type: 'dashed', color: '#60a5fa' } });
-        series.push({ name: 'Target Y', type: 'line', xAxisIndex: 1, yAxisIndex: 1, data: spYawData, lineStyle: { type: 'dashed', color: '#a78bfa' } });
+        series.push({ name: 'Target P', type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: spPitchData, lineStyle: { type: 'dashed', color: '#000000', width: 2.5 }, symbol: 'none' });
+        series.push({ name: 'Target Y', type: 'line', xAxisIndex: 1, yAxisIndex: 1, data: spYawData, lineStyle: { type: 'dashed', color: '#000000', width: 2.5 }, symbol: 'none' });
         legendPitch.push('Target P');
         legendYaw.push('Target Y');
     }
 
     const option = {
-        title: { text: title, textStyle: { color: '#ffffff', fontSize: 14, fontWeight: 'bold' }, top: 0, left: 10 },
         tooltip: { trigger: 'axis' },
         legend: [
-            { type: 'scroll', data: legendPitch, textStyle: { color: '#ffffff', fontWeight: 'bold' }, top: '5%', left: 'center', width: '80%' },
-            { type: 'scroll', data: legendYaw, textStyle: { color: '#ffffff', fontWeight: 'bold' }, top: '55%', left: 'center', width: '80%' }
+            { type: 'scroll', data: legendPitch, textStyle: { color: '#000000', fontWeight: 'bold', fontFamily: 'serif' }, top: '6%', left: 'center', width: '80%' },
+            { type: 'scroll', data: legendYaw, textStyle: { color: '#000000', fontWeight: 'bold', fontFamily: 'serif' }, top: '56%', left: 'center', width: '80%' }
         ],
-        grid: [{ top: '15%', height: '35%', left: '10%', right: '5%' }, { top: '65%', height: '35%', left: '10%', right: '5%' }],
+        grid: [{ top: '12%', height: '32%', left: '10%', right: '5%' }, { top: '56%', height: '32%', left: '10%', right: '5%' }],
         dataZoom: [
             { type: 'inside', xAxisIndex: [0, 1] },
-            { type: 'slider', xAxisIndex: [0, 1], bottom: 0, height: 16, textStyle: {color: '#ffffff', fontWeight: 'bold'} }
+            { type: 'slider', xAxisIndex: [0, 1], bottom: 5, height: 16, textStyle: {color: '#000000', fontWeight: 'bold'} }
         ],
         xAxis: [
             { gridIndex: 0, type: 'category', data: timeAxis.map(t => t), show: false },
-            { gridIndex: 1, type: 'category', data: timeAxis.map(t => t), name: 'Time (s)', nameLocation: 'middle', nameGap: 20, axisLabel: {color: '#ffffff', fontWeight: 'bold'}, nameTextStyle: {color: '#ffffff', fontWeight: 'bold'} }
+            { gridIndex: 1, type: 'category', data: timeAxis.map(t => t), name: 'Time (s)', nameLocation: 'middle', nameGap: 20, axisLabel: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, nameTextStyle: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, axisLine: { show: true, lineStyle: { color: '#000000' } } }
         ],
         yAxis: [
-            { gridIndex: 0, type: 'value', name: 'Pitch (deg)', splitLine: { lineStyle: { color: '#444' } }, axisLabel: {color: '#ffffff', fontWeight: 'bold'}, nameTextStyle: {color: '#ffffff', fontWeight: 'bold'} },
-            { gridIndex: 1, type: 'value', name: 'Yaw (deg)', splitLine: { lineStyle: { color: '#444' } }, axisLabel: {color: '#ffffff', fontWeight: 'bold'}, nameTextStyle: {color: '#ffffff', fontWeight: 'bold'} }
+            { gridIndex: 0, type: 'value', name: 'Pitch (deg)', splitLine: { lineStyle: { color: '#e5e7eb', type: 'dashed' } }, axisLabel: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, nameTextStyle: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, axisLine: { show: true, lineStyle: { color: '#000000' } } },
+            { gridIndex: 1, type: 'value', name: 'Yaw (deg)', splitLine: { lineStyle: { color: '#e5e7eb', type: 'dashed' } }, axisLabel: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, nameTextStyle: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, axisLine: { show: true, lineStyle: { color: '#000000' } } }
         ],
         series: series,
-        backgroundColor: 'transparent'
+        backgroundColor: '#ffffff'
     };
 
     const chartKey = dataSeries.map(ds => ds.name).join('_') || 'empty';
-    return <ReactECharts key={chartKey} option={option} notMerge={true} style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} />;
+    return (
+        <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto' }}>
+            <ReactECharts key={chartKey} option={option} notMerge={true} style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} />
+            <div style={{ textAlign: 'center', marginTop: 10, fontSize: 14, fontWeight: 'normal', fontFamily: 'serif', color: '#ffffff' }}>
+                <strong>Hình:</strong> {title}
+            </div>
+        </div>
+    );
 }
 
-function ErrorChart({ title, dataSeries, timeAxis, spPitchData, spYawData, height = 300 }) {
+function ErrorChart({ title, dataSeries, timeAxis, spPitchData, spYawData, height = 400 }) {
     if (!spPitchData || !spYawData || timeAxis.length === 0) return null;
     
     const series = [];
     const legendPitch = [];
     const legendYaw = [];
 
-    dataSeries.forEach(ds => {
+    const symbols = ['circle', 'rect', 'triangle', 'diamond', 'pin', 'arrow'];
+    const dashTypes = ['solid', 'dashed', 'dotted', [5,5], [10,5]];
+
+    dataSeries.forEach((ds, idx) => {
         if (!ds.data) return;
+        const sym = symbols[idx % symbols.length];
+        const lineT = dashTypes[idx % dashTypes.length];
         const errP = ds.data.pitch.map((p, i) => (parseFloat(spPitchData[i]) - (p * 180 / Math.PI)).toFixed(2));
         const errY = ds.data.yaw.map((y, i) => (parseFloat(spYawData[i]) - (y * 180 / Math.PI)).toFixed(2));
         
-        series.push({ name: `${ds.name} Err P`, type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: errP, smooth: true, itemStyle: { color: ds.colorP } });
-        series.push({ name: `${ds.name} Err Y`, type: 'line', xAxisIndex: 1, yAxisIndex: 1, data: errY, smooth: true, itemStyle: { color: ds.colorY } });
+        series.push({ name: `${ds.name} Err P`, type: 'line', xAxisIndex: 0, yAxisIndex: 0, data: errP, smooth: true, itemStyle: { color: ds.colorP }, symbol: sym, symbolSize: 8, lineStyle: { type: lineT, width: 3 } });
+        series.push({ name: `${ds.name} Err Y`, type: 'line', xAxisIndex: 1, yAxisIndex: 1, data: errY, smooth: true, itemStyle: { color: ds.colorY }, symbol: sym, symbolSize: 8, lineStyle: { type: lineT, width: 3 } });
         legendPitch.push(`${ds.name} Err P`);
         legendYaw.push(`${ds.name} Err Y`);
     });
 
     const option = {
-        title: { text: title, textStyle: { color: '#ffffff', fontSize: 14, fontWeight: 'bold' }, top: 0, left: 10 },
         tooltip: { trigger: 'axis' },
         legend: [
-            { type: 'scroll', data: legendPitch, textStyle: { color: '#ffffff', fontWeight: 'bold' }, top: '5%', left: 'center', width: '80%' },
-            { type: 'scroll', data: legendYaw, textStyle: { color: '#ffffff', fontWeight: 'bold' }, top: '55%', left: 'center', width: '80%' }
+            { type: 'scroll', data: legendPitch, textStyle: { color: '#000000', fontWeight: 'bold', fontFamily: 'serif' }, top: '6%', left: 'center', width: '80%' },
+            { type: 'scroll', data: legendYaw, textStyle: { color: '#000000', fontWeight: 'bold', fontFamily: 'serif' }, top: '56%', left: 'center', width: '80%' }
         ],
-        grid: [{ top: '15%', height: '35%', left: '10%', right: '5%' }, { top: '65%', height: '35%', left: '10%', right: '5%' }],
+        grid: [{ top: '12%', height: '32%', left: '10%', right: '5%' }, { top: '56%', height: '32%', left: '10%', right: '5%' }],
         dataZoom: [
             { type: 'inside', xAxisIndex: [0, 1] },
-            { type: 'slider', xAxisIndex: [0, 1], bottom: 0, height: 16, textStyle: {color: '#ffffff', fontWeight: 'bold'} }
+            { type: 'slider', xAxisIndex: [0, 1], bottom: 5, height: 16, textStyle: {color: '#000000', fontWeight: 'bold'} }
         ],
         xAxis: [
             { gridIndex: 0, type: 'category', data: timeAxis.map(t => t), show: false },
-            { gridIndex: 1, type: 'category', data: timeAxis.map(t => t), name: 'Time (s)', nameLocation: 'middle', nameGap: 20, axisLabel: {color: '#ffffff', fontWeight: 'bold'}, nameTextStyle: {color: '#ffffff', fontWeight: 'bold'} }
+            { gridIndex: 1, type: 'category', data: timeAxis.map(t => t), name: 'Time (s)', nameLocation: 'middle', nameGap: 20, axisLabel: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, nameTextStyle: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, axisLine: { show: true, lineStyle: { color: '#000000' } } }
         ],
         yAxis: [
-            { gridIndex: 0, type: 'value', name: 'Error Pitch (deg)', splitLine: { lineStyle: { color: '#444' } }, axisLabel: {color: '#ffffff', fontWeight: 'bold'}, nameTextStyle: {color: '#ffffff', fontWeight: 'bold'} },
-            { gridIndex: 1, type: 'value', name: 'Error Yaw (deg)', splitLine: { lineStyle: { color: '#444' } }, axisLabel: {color: '#ffffff', fontWeight: 'bold'}, nameTextStyle: {color: '#ffffff', fontWeight: 'bold'} }
+            { gridIndex: 0, type: 'value', name: 'Error Pitch (deg)', splitLine: { lineStyle: { color: '#e5e7eb', type: 'dashed' } }, axisLabel: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, nameTextStyle: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, axisLine: { show: true, lineStyle: { color: '#000000' } } },
+            { gridIndex: 1, type: 'value', name: 'Error Yaw (deg)', splitLine: { lineStyle: { color: '#e5e7eb', type: 'dashed' } }, axisLabel: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, nameTextStyle: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, axisLine: { show: true, lineStyle: { color: '#000000' } } }
         ],
         series: series,
-        backgroundColor: 'transparent'
+        backgroundColor: '#ffffff'
     };
 
     const chartKey = dataSeries.map(ds => ds.name).join('_') || 'empty';
-    return <ReactECharts key={chartKey} option={option} notMerge={true} style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} />;
+    return (
+        <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto' }}>
+            <ReactECharts key={chartKey} option={option} notMerge={true} style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} />
+            <div style={{ textAlign: 'center', marginTop: 10, fontSize: 14, fontWeight: 'normal', fontFamily: 'serif', color: '#ffffff' }}>
+                <strong>Hình:</strong> {title}
+            </div>
+        </div>
+    );
 }
 
-function ConvergenceChart({ compareResult, height = 300 }) {
+function ConvergenceChart({ compareResult, height = 400 }) {
     if (!compareResult) return null;
 
     let maxIters = 0;
@@ -166,7 +188,11 @@ function ConvergenceChart({ compareResult, height = 300 }) {
         'GWO': '#f59e0b'
     };
 
+    const symbols = ['circle', 'rect', 'triangle', 'diamond', 'pin', 'arrow'];
+    const dashTypes = ['solid', 'dashed', 'dotted', [5,5], [10,5]];
+
     let sliced = false;
+    let idx = 0;
     ['GA', 'PSO', 'TPE', 'CMA-ES', 'GWO'].forEach(alg => {
         if (compareResult[alg] && compareResult[alg].best_overall && compareResult[alg].best_overall.cost_history) {
             const raw_hist = compareResult[alg].best_overall.cost_history;
@@ -174,13 +200,19 @@ function ConvergenceChart({ compareResult, height = 300 }) {
             const hist = sliced ? raw_hist.slice(3) : raw_hist; 
             if (hist.length > maxIters) maxIters = hist.length;
             
+            const sym = symbols[idx % symbols.length];
+            const lineT = dashTypes[idx % dashTypes.length];
+            idx++;
+
             series.push({
                 name: alg,
                 type: 'line',
                 data: hist,
                 smooth: true,
                 itemStyle: { color: colors[alg] },
-                symbol: 'none'
+                symbol: sym,
+                symbolSize: 8,
+                lineStyle: { type: lineT, width: 3 }
             });
         }
     });
@@ -190,17 +222,23 @@ function ConvergenceChart({ compareResult, height = 300 }) {
     const xAxisData = Array.from({length: maxIters}, (_, i) => sliced ? i + 4 : i + 1);
 
     const option = {
-        title: { text: 'Convergence Chart (Cost vs Iterations)', textStyle: { color: '#ffffff', fontSize: 14, fontWeight: 'bold' }, top: 0, left: 10 },
         tooltip: { trigger: 'axis' },
-        legend: { type: 'scroll', data: series.map(s => s.name), textStyle: { color: '#ffffff', fontWeight: 'bold' }, top: '5%', left: 'center', width: '80%' },
+        legend: { type: 'scroll', data: series.map(s => s.name), textStyle: { color: '#000000', fontWeight: 'bold', fontFamily: 'serif' }, top: '6%', left: 'center', width: '80%' },
         grid: { top: '20%', bottom: '15%', left: '10%', right: '5%' },
-        xAxis: { type: 'category', data: xAxisData, name: 'Iteration', nameLocation: 'middle', nameGap: 25, axisLabel: {color: '#ffffff'}, nameTextStyle: {color: '#ffffff', fontWeight: 'bold'} },
-        yAxis: { type: 'value', name: 'Cost', splitLine: { lineStyle: { color: '#444' } }, axisLabel: {color: '#ffffff'}, nameTextStyle: {color: '#ffffff', fontWeight: 'bold'} },
+        xAxis: { type: 'category', data: xAxisData, name: 'Iteration', nameLocation: 'middle', nameGap: 25, axisLabel: {color: '#000000', fontFamily: 'serif', fontWeight: 'bold'}, nameTextStyle: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, axisLine: { show: true, lineStyle: { color: '#000000' } } },
+        yAxis: { type: 'value', name: 'Cost', splitLine: { lineStyle: { color: '#e5e7eb', type: 'dashed' } }, axisLabel: {color: '#000000', fontFamily: 'serif', fontWeight: 'bold'}, nameTextStyle: {color: '#000000', fontWeight: 'bold', fontFamily: 'serif'}, axisLine: { show: true, lineStyle: { color: '#000000' } } },
         series: series,
-        backgroundColor: 'transparent'
+        backgroundColor: '#ffffff'
     };
 
-    return <ReactECharts option={option} notMerge={true} style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} />;
+    return (
+        <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto' }}>
+            <ReactECharts option={option} notMerge={true} style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} />
+            <div style={{ textAlign: 'center', marginTop: 10, fontSize: 14, fontWeight: 'normal', fontFamily: 'serif', color: '#ffffff' }}>
+                <strong>Hình:</strong> Convergence Chart (Cost vs Iterations)
+            </div>
+        </div>
+    );
 }
 
 function IterationChartBlock({ alg, compareResult, colorsP, colorsY, timeAxis, spPitchData, spYawData }) {
@@ -623,19 +661,19 @@ export default function PageIdealTuning() {
                 <div style={{display: 'flex', gap: 16, padding: '10px 0', borderTop: '1px solid #333'}}>
                     <div className="form-group" style={{marginBottom: 0}}>
                         <label style={{fontSize: 11}}>Wind Pitch (Nm)</label>
-                        <input type="number" step="0.01" value={disturbances.wind_torque_p} onChange={e => setDisturbances({...disturbances, wind_torque_p: parseFloat(e.target.value)})} style={{padding: 4}} />
+                        <input type="number" step="0.01" value={disturbances.wind_torque_p} onChange={e => setDisturbances({...disturbances, wind_torque_p: e.target.value})} style={{padding: 4}} />
                     </div>
                     <div className="form-group" style={{marginBottom: 0}}>
                         <label style={{fontSize: 11}}>Wind Yaw (Nm)</label>
-                        <input type="number" step="0.01" value={disturbances.wind_torque_y} onChange={e => setDisturbances({...disturbances, wind_torque_y: parseFloat(e.target.value)})} style={{padding: 4}} />
+                        <input type="number" step="0.01" value={disturbances.wind_torque_y} onChange={e => setDisturbances({...disturbances, wind_torque_y: e.target.value})} style={{padding: 4}} />
                     </div>
                     <div className="form-group" style={{marginBottom: 0}}>
                         <label style={{fontSize: 11}}>Sensor Noise StdDev</label>
-                        <input type="number" step="0.01" value={disturbances.sensor_noise_std} onChange={e => setDisturbances({...disturbances, sensor_noise_std: parseFloat(e.target.value)})} style={{padding: 4}} />
+                        <input type="number" step="0.01" value={disturbances.sensor_noise_std} onChange={e => setDisturbances({...disturbances, sensor_noise_std: e.target.value})} style={{padding: 4}} />
                     </div>
                     <div className="form-group" style={{marginBottom: 0}}>
                         <label style={{fontSize: 11}}>Payload Ratio</label>
-                        <input type="number" step="0.1" value={disturbances.mass_payload} onChange={e => setDisturbances({...disturbances, mass_payload: parseFloat(e.target.value)})} style={{padding: 4}} />
+                        <input type="number" step="0.1" value={disturbances.mass_payload} onChange={e => setDisturbances({...disturbances, mass_payload: e.target.value})} style={{padding: 4}} />
                     </div>
                 </div>
             </div>

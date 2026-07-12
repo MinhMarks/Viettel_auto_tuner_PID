@@ -5,6 +5,11 @@ import os
 import argparse
 import sys
 import csv
+import warnings
+import numpy as np
+import random
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
@@ -20,18 +25,18 @@ from core.metrics import calculate_metrics
 # CẤU HÌNH TRỰC QUAN HÓA (CONFIGURATION)
 # ==========================================
 # 1. Thư mục chứa dữ liệu thực nghiệm (VD: "experiment_logs/batch_20260703_064718")
-TARGET_RUN_DIR = r"../experiment_logs/batch_20260708_222210"
+TARGET_RUN_DIR = r"../experiment_logs/batch_20260710_073942"
 
 # 2. Bộ lọc (Để danh sách rỗng [] nếu muốn tự động lấy TẤT CẢ các giá trị có trong file log)
-FILTER_ALGORITHMS = ["PSO", "TPE", "CMA-ES", "GWO", "LQR Decentralized", "MIMO LQR"] # VD: ["PSO", "TPE"] hoặc để []
+FILTER_ALGORITHMS = ["PSO", "TPE", "CMA-ES", "GWO", "MIMO LQR"] # VD: ["PSO", "TPE"] hoặc để []
 FILTER_OBJECTIVES = ["time_domain_objective"] # VD: ["time_domain_objective"] hoặc để []
 # Gợi ý các Profile có sẵn theo từng Objective Function (trong trường hợp bạn muốn chọn riêng):
 # - "default_objective": ["balanced", "aggressive", "eco", "safety"]
 # - "time_domain_objective": ["balanced", "aggressive", "conservative"]
 FILTER_PROFILES = ["aggressive"] # Để trống [] script sẽ tự phân tích và lấy đúng các profile có trong log
 FILTER_CONTROLLER_TYPES = ["classic"] # VD: ["classic", "fuzzy"]
-FILTER_GS_METHODS = ["step"] # VD: ["step", "None"]
-FILTER_CONFIGURATIONS = ["Conf 2"] # VD: ["Conf 1", "Conf 5"]
+FILTER_GS_METHODS = ["linear"] # VD: ["step", "None"]
+FILTER_CONFIGURATIONS = ["Conf 1"] # VD: ["Conf 1", "Conf 5"]
 
 # 3. Phương thức Gộp nhóm (Aggregation) khi có nhiều cấu hình chạy cùng 1 thuật toán
 # Cách tính: Lấy "mean" (Trung bình hiệu năng) hoặc "max" (Trường hợp tồi tệ nhất)
@@ -40,6 +45,9 @@ AGGREGATION_METHOD = "max" # Chỉ chấp nhận "mean" hoặc "max"
 # 4. Metric để so sánh (Cột trong file CSV)
 # Ví dụ: "Pitch_ITAE", "Pitch_Overshoot", "Pitch_RiseTime", "Pitch_CE"
 AGGREGATION_METRIC = "Pitch_ITAE"
+
+# 5. Cờ cho phép mô phỏng lại các baseline (MIMO LQR, LQR Decentralized) nếu thiếu trong file log
+SIMULATE_MISSING_BASELINES = False
 
 # ==========================================
 # HÀM XỬ LÝ CHÍNH
@@ -79,7 +87,7 @@ def format_academic_plot(ax):
     ax.grid(axis='y', linestyle='--', color='#E0E0E0', zorder=0)
     ax.set_axisbelow(True)
 
-def simulate_lqr_for_metrics(sp_pitch, sp_yaw, t_max, dist_cfg, mode='decentralized'):
+def simulate_lqr_for_metrics(sp_pitch, sp_yaw, t_max, dist_cfg, mode='decentralized', trajectory_type='step'):
     env = Helicopter2DOF(disturbance_config=dist_cfg)
     
     if mode == 'mimo':
@@ -90,27 +98,45 @@ def simulate_lqr_for_metrics(sp_pitch, sp_yaw, t_max, dist_cfg, mode='decentrali
         controller = DecentralizedPID(params, sp_pitch, sp_yaw, params_large=None, gs_method=None)
         
     state = [0.0, 0.0, 0.0, 0.0]
-    time_step = 0.01
+    time_step = 0.002
     steps = int(t_max / time_step)
     
     t_arr, p_arr, y_arr = [], [], []
     u_p_arr, u_y_arr = [], []
     current_time = 0.0
     
+    sp_p_arr, sp_y_arr = [], []
     for _ in range(steps):
+        t = current_time
+        if trajectory_type == 'step':
+            sp_p, sp_y = sp_pitch, sp_yaw
+        elif trajectory_type == 'sine':
+            sp_p = sp_pitch * np.sin(2 * np.pi * 0.25 * t)
+            sp_y = sp_yaw * np.sin(2 * np.pi * 0.25 * t)
+        elif trajectory_type == 'square':
+            sp_p = sp_pitch if np.sin(2 * np.pi * 0.1 * t) > 0 else -sp_pitch
+            sp_y = sp_yaw if np.sin(2 * np.pi * 0.1 * t) > 0 else -sp_yaw
+        elif trajectory_type == 'multi-step':
+            sp_p = sp_pitch * (min(int(t / 2.5) + 1, 4) / 4.0)
+            sp_y = sp_yaw * (min(int(t / 2.5) + 1, 4) / 4.0)
+        else:
+            sp_p, sp_y = sp_pitch, sp_yaw
+            
         t_arr.append(current_time)
         p_arr.append(state[0])
         y_arr.append(state[2])
+        sp_p_arr.append(sp_p)
+        sp_y_arr.append(sp_y)
         
-        u = controller.compute(state[0], state[2], time_step)
+        u = controller.compute(state[0], state[2], time_step, setpoint_pitch=sp_p, setpoint_yaw=sp_y)
         u_p_arr.append(u[0])
         u_y_arr.append(u[1])
         
         state = env.simulate_step(state, u[0], u[1], time_step)
         current_time += time_step
         
-    m_pitch = calculate_metrics(t_arr, p_arr, sp_pitch, u_p_arr)
-    m_yaw = calculate_metrics(t_arr, y_arr, sp_yaw, u_y_arr)
+    m_pitch = calculate_metrics(t_arr, p_arr, sp_p_arr if trajectory_type != 'step' else sp_pitch, u_p_arr)
+    m_yaw = calculate_metrics(t_arr, y_arr, sp_y_arr if trajectory_type != 'step' else sp_yaw, u_y_arr)
     return m_pitch, m_yaw
 
 def main():
@@ -143,6 +169,7 @@ def main():
         
         # Tạo bảng tóm tắt
         summary_rows = []
+        df_melt = pd.DataFrame()
         
         if not df_conv.empty:
             cost_cols = [col for col in df_conv.columns if "_Cost" in col]
@@ -156,17 +183,18 @@ def main():
                 if FILTER_ALGORITHMS:
                     df_melt = df_melt[df_melt['Algorithm'].isin(FILTER_ALGORITHMS)]
                 
-                markers = ['o', 's', '^', 'D', 'v', 'p', '*', 'X']
-                
-                # sns.lineplot automatically handles CI shading if multiple seeds exist
-                sns.lineplot(data=df_melt, x='Iteration', y='Cost', hue='Algorithm', 
-                             style='Algorithm', markers=markers[:df_melt['Algorithm'].nunique()], 
-                             dashes=True, errorbar=('ci', 95) if has_seed else None, ax=ax, markersize=6)
-                
-                # Bảng tóm tắt (Mean cost)
-                df_mean = df_melt.groupby('Algorithm')['Cost'].min().reset_index()
-                df_mean.rename(columns={'Cost': 'Best Cost (Mean)'}, inplace=True)
-                summary_rows = df_mean.to_dict('records')
+                if not df_melt.empty:
+                    markers = ['o', 's', '^', 'D', 'v', 'p', '*', 'X']
+                    
+                    # sns.lineplot automatically handles CI shading if multiple seeds exist
+                    sns.lineplot(data=df_melt, x='Iteration', y='Cost', hue='Algorithm', 
+                                 style='Algorithm', markers=markers[:df_melt['Algorithm'].nunique()], 
+                                 dashes=True, errorbar=('ci', 95) if has_seed else None, ax=ax, markersize=6)
+                    
+                    # Bảng tóm tắt (Mean cost)
+                    df_mean = df_melt.groupby('Algorithm')['Cost'].min().reset_index()
+                    df_mean.rename(columns={'Cost': 'Best Cost (Mean)'}, inplace=True)
+                    summary_rows = df_mean.to_dict('records')
                         
         ax.set_xlabel("Iteration", fontsize=14)
         ax.set_ylabel("Cost Function Value (Log Scale)", fontsize=14)
@@ -186,7 +214,11 @@ def main():
             df_summary = pd.DataFrame(summary_rows)
             save_csv_safe(df_summary, os.path.join(TARGET_RUN_DIR, "table_convergence.csv"))
             save_latex_table_safe(df_summary, os.path.join(TARGET_RUN_DIR, "table_convergence.tex"))
-        print("Đã xuất Pair 1: Convergence (Chart + Table)")
+        
+        if not df_melt.empty:
+            save_csv_safe(df_melt, os.path.join(TARGET_RUN_DIR, "raw_filtered_convergence.csv"))
+            
+        print(f"Đã xuất Pair 1: Convergence (Chart + Table) - Lấy từ {len(df_melt)} dòng dữ liệu")
         
     # ---------------------------------------------------------
     # PAIR 1b: TỐC ĐỘ HỘI TỤ THEO THỜI GIAN (CONVERGENCE OVER TIME)
@@ -243,7 +275,8 @@ def main():
                 df_summary_time = pd.DataFrame(summary_time_rows)
                 save_csv_safe(df_summary_time, os.path.join(TARGET_RUN_DIR, "table_convergence_time.csv"))
                 save_latex_table_safe(df_summary_time, os.path.join(TARGET_RUN_DIR, "table_convergence_time.tex"))
-            print("Đã xuất Pair 1b: Convergence over Time (Chart + Table)")
+                save_csv_safe(df_merged, os.path.join(TARGET_RUN_DIR, "raw_filtered_convergence_time.csv"))
+            print(f"Đã xuất Pair 1b: Convergence over Time (Chart + Table) - Lấy từ {len(df_merged)} dòng dữ liệu")
         else:
             plt.close()
             print("Bỏ qua Pair 1b (Không có dữ liệu thời gian trong convergence_history.csv)")
@@ -256,6 +289,12 @@ def main():
         df_rob = pd.read_csv(robust_path)
         
         # --- BỔ SUNG LQR BASELINE CHO ROBUSTNESS ---
+        # User request: "Tôi muốn mỗi khi chạy file thì nó xóa và chạy lại các baseline"
+        # Force remove existing baselines so they are always re-simulated.
+        if 'Algorithm' in df_rob.columns and SIMULATE_MISSING_BASELINES:
+            df_rob = df_rob[~df_rob['Algorithm'].isin(["LQR Decentralized", "MIMO LQR", "LQR_Baseline"])]
+
+                
         missing_baselines = []
         if "LQR Decentralized" not in df_rob['Algorithm'].values:
             missing_baselines.append("LQR Decentralized")
@@ -268,8 +307,25 @@ def main():
         if "MIMO LQR" not in df_rob['Algorithm'].values:
             missing_baselines.append("MIMO LQR")
             
-        if missing_baselines and not df_rob.empty:
+        if missing_baselines and not df_rob.empty and SIMULATE_MISSING_BASELINES:
             print(f"--- Đang mô phỏng {missing_baselines} cho Robustness Sweep ---")
+            
+            if "Seed" in df_rob.columns:
+                seeds_list = df_rob['Seed'].dropna().unique().tolist()
+                if not seeds_list: seeds_list = [42]
+            else:
+                seeds_list = [42]
+                
+            # Cố gắng lấy T_Max chuẩn từ experiment_summary.csv
+            default_t_max = 20.0
+            sum_path_temp = os.path.join(TARGET_RUN_DIR, "experiment_summary.csv")
+            if os.path.exists(sum_path_temp):
+                try:
+                    df_sum_temp = pd.read_csv(sum_path_temp)
+                    if 'T_Max' in df_sum_temp.columns and not df_sum_temp['T_Max'].isna().all():
+                        default_t_max = float(df_sum_temp['T_Max'].dropna().iloc[0])
+                except:
+                    pass
             
             configs = df_rob[['Tuning_Objective', 'Tuning_Profile', 'Tuning_Disturbance', 'Test_Trajectory', 'Configuration', 'Disturbance_Wind_P', 'Disturbance_Wind_Y', 'Disturbance_Sensor_Noise', 'Disturbance_Payload']].drop_duplicates()
             
@@ -283,30 +339,38 @@ def main():
                 }
                 sp_pitch = 0.5236
                 sp_yaw = 0.5236
-                t_max = 10.0
+                t_max = row.get('T_Max', default_t_max)
+                traj_col = 'Test_Trajectory' if 'Test_Trajectory' in row else 'Trajectory_Type'
+                traj_type = row.get(traj_col, 'step')
                 
                 for baseline_name in missing_baselines:
                     mode = 'mimo' if baseline_name == "MIMO LQR" else 'decentralized'
-                    m_pitch, m_yaw = simulate_lqr_for_metrics(sp_pitch, sp_yaw, t_max, dist_cfg, mode=mode)
                     
-                    new_row = {col: row.get(col) for col in configs.columns}
-                    new_row['Algorithm'] = baseline_name
-                    new_row['Controller_Type'] = 'classic'
-                    new_row['GS_Method'] = 'None'
-                    new_row['Pitch_RiseTime'] = m_pitch.get('rise_time')
-                    new_row['Pitch_SettlingTime'] = m_pitch.get('settling_time')
-                    new_row['Pitch_Overshoot'] = m_pitch.get('overshoot')
-                    new_row['Pitch_SSE'] = m_pitch.get('steady_state_error')
-                    new_row['Pitch_CE'] = m_pitch.get('control_energy')
-                    new_row['Pitch_ITAE'] = m_pitch.get('itae')
-                    new_row['Yaw_RiseTime'] = m_yaw.get('rise_time')
-                    new_row['Yaw_SettlingTime'] = m_yaw.get('settling_time')
-                    new_row['Yaw_Overshoot'] = m_yaw.get('overshoot')
-                    new_row['Yaw_SSE'] = m_yaw.get('steady_state_error')
-                    new_row['Yaw_CE'] = m_yaw.get('control_energy')
-                    new_row['Yaw_ITAE'] = m_yaw.get('itae')
-                    
-                    lqr_rows.append(new_row)
+                    for seed in seeds_list:
+                        np.random.seed(int(seed))
+                        random.seed(int(seed))
+                        m_pitch, m_yaw = simulate_lqr_for_metrics(sp_pitch, sp_yaw, t_max, dist_cfg, mode=mode, trajectory_type=traj_type)
+                        
+                        new_row = {col: row.get(col) for col in configs.columns}
+                        new_row['Algorithm'] = baseline_name
+                        new_row['Controller_Type'] = 'classic'
+                        new_row['GS_Method'] = 'None'
+                        if "Seed" in df_rob.columns:
+                            new_row['Seed'] = seed
+                        new_row['Pitch_RiseTime'] = m_pitch.get('rise_time')
+                        new_row['Pitch_SettlingTime'] = m_pitch.get('settling_time')
+                        new_row['Pitch_Overshoot'] = m_pitch.get('overshoot')
+                        new_row['Pitch_SSE'] = m_pitch.get('steady_state_error')
+                        new_row['Pitch_CE'] = m_pitch.get('control_energy')
+                        new_row['Pitch_ITAE'] = m_pitch.get('itae')
+                        new_row['Yaw_RiseTime'] = m_yaw.get('rise_time')
+                        new_row['Yaw_SettlingTime'] = m_yaw.get('settling_time')
+                        new_row['Yaw_Overshoot'] = m_yaw.get('overshoot')
+                        new_row['Yaw_SSE'] = m_yaw.get('steady_state_error')
+                        new_row['Yaw_CE'] = m_yaw.get('control_energy')
+                        new_row['Yaw_ITAE'] = m_yaw.get('itae')
+                        
+                        lqr_rows.append(new_row)
                 
             if lqr_rows:
                 df_lqr = pd.DataFrame(lqr_rows)
@@ -348,27 +412,32 @@ def main():
             plt.savefig(os.path.join(TARGET_RUN_DIR, "chart_robustness.pdf"), bbox_inches='tight', dpi=300)
             plt.close()
             
-            # Lấy danh sách các cột Metric có trong dữ liệu (loại bỏ các cột chữ/không liên quan)
-            metric_cols = [col for col in df_rob.columns if "Pitch_" in col or "Yaw_" in col]
+            # Lấy danh sách các cột Metric có trong dữ liệu (chỉ lấy AGGREGATION_METRIC theo yêu cầu)
+            metric_cols = [AGGREGATION_METRIC] if AGGREGATION_METRIC in df_rob.columns else [col for col in df_rob.columns if "Pitch_" in col or "Yaw_" in col]
             
-            # Tạo bảng Pivot Table Delta (Conf cuối - Conf 1) cho TẤT CẢ metrics
+            # Tạo bảng hiển thị giá trị Metric qua TỪNG cấu hình + Cột Delta (Conf cuối - Conf 1)
             conf_list = sorted(df_rob['Configuration'].unique())
-            if len(conf_list) >= 2:
-                base_conf = conf_list[0]
-                max_conf = conf_list[-1]
+            if len(conf_list) >= 1:
+                df_parts = []
+                for conf in conf_list:
+                    # Groupby mean đề phòng có nhiều dòng cùng thuật toán ở cùng 1 conf
+                    df_conf = df_rob[df_rob['Configuration'] == conf].groupby('Algorithm')[metric_cols].mean()
+                    df_conf = df_conf.add_suffix(f'_({conf})')
+                    df_parts.append(df_conf)
                 
-                # Groupby mean đề phòng có nhiều dòng cùng thuật toán ở cùng 1 conf (như nhiều profile)
-                df_base = df_rob[df_rob['Configuration'] == base_conf].groupby('Algorithm')[metric_cols].mean()
-                df_max = df_rob[df_rob['Configuration'] == max_conf].groupby('Algorithm')[metric_cols].mean()
-                df_delta = df_max - df_base
+                # Nối tất cả các cột conf lại
+                df_out = pd.concat(df_parts, axis=1)
                 
-                # Thêm hậu tố cho tên cột
-                df_base_out = df_base.add_suffix(f'_Base({base_conf})')
-                df_max_out = df_max.add_suffix(f'_Worst({max_conf})')
-                df_delta_out = df_delta.add_suffix('_Delta')
+                # Tính thêm cột Delta (nếu có từ 2 conf trở lên)
+                if len(conf_list) >= 2:
+                    base_conf = conf_list[0]
+                    max_conf = conf_list[-1]
+                    df_base = df_rob[df_rob['Configuration'] == base_conf].groupby('Algorithm')[metric_cols].mean()
+                    df_max = df_rob[df_rob['Configuration'] == max_conf].groupby('Algorithm')[metric_cols].mean()
+                    df_delta = (df_max - df_base).add_suffix('_Delta')
+                    df_out = pd.concat([df_out, df_delta], axis=1)
                 
-                # Nối tất cả lại
-                df_out = pd.concat([df_base_out, df_max_out, df_delta_out], axis=1).reset_index()
+                df_out = df_out.reset_index()
                 save_csv_safe(df_out, os.path.join(TARGET_RUN_DIR, "table_robustness_delta.csv"))
                 save_latex_table_safe(df_out, os.path.join(TARGET_RUN_DIR, "table_robustness_delta.tex"))
             
@@ -397,106 +466,50 @@ def main():
                 df_subset_out = df_subset[actual_columns]
                 save_csv_safe(df_subset_out, os.path.join(TARGET_RUN_DIR, "table_robustness_filtered_subset.csv"))
                 save_latex_table_safe(df_subset_out, os.path.join(TARGET_RUN_DIR, "table_robustness_filtered_subset.tex"))
-                print("Đã xuất Pair 2: Bảng lọc tập con (table_robustness_filtered_subset.csv/.tex)")
+                print(f"Đã xuất Pair 2: Bảng lọc tập con (table_robustness_filtered_subset.csv/.tex) - Lấy từ {len(df_subset_out)} dòng dữ liệu")
             
-            print("Đã xuất Pair 2: Robustness Sweep (Chart + Table)")
+            print(f"Đã xuất Pair 2: Robustness Sweep (Chart + Table) - Lấy từ {len(df_rob)} dòng dữ liệu")
+            save_csv_safe(df_rob, os.path.join(TARGET_RUN_DIR, "raw_filtered_robustness_sweep.csv"))
             
     # ---------------------------------------------------------
     # PAIR 3: TỔNG QUAN KIẾN TRÚC & ĐÁNH ĐỔI (OVERALL & TRADE-OFF)
     # ---------------------------------------------------------
-    sum_path = os.path.join(TARGET_RUN_DIR, "experiment_summary.csv")
+    # Dùng chung dữ liệu đã lọc của Pair 2 (robustness) để phân tích thay vì dữ liệu lý tưởng (experiment_summary)
+    sum_path = os.path.join(TARGET_RUN_DIR, "robustness_test_results.csv")
     if os.path.exists(sum_path):
-        df_sum = pd.read_csv(sum_path)
-        
-        # --- BỔ SUNG LQR BASELINE CHO EXPERIMENT SUMMARY ---
-        missing_baselines = []
-        if "LQR Decentralized" not in df_sum['Algorithm'].values:
-            missing_baselines.append("LQR Decentralized")
-            
-        if "LQR_Baseline" in df_sum['Algorithm'].values:
-            df_sum.loc[df_sum['Algorithm'] == "LQR_Baseline", 'Algorithm'] = "LQR Decentralized"
-            if "LQR Decentralized" in missing_baselines:
-                missing_baselines.remove("LQR Decentralized")
-                
-        if "MIMO LQR" not in df_sum['Algorithm'].values:
-            missing_baselines.append("MIMO LQR")
-            
-        if missing_baselines and not df_sum.empty:
-            print(f"--- Đang mô phỏng {missing_baselines} cho mẻ thử nghiệm (df_sum) ---")
-            
-            # Grouping by unique environment configuration
-            configs = df_sum[['Objective_Type', 'Tuning_Profile', 'Trajectory_Type', 'T_Max', 'Setpoint_Pitch', 'Setpoint_Yaw', 'Disturbance_Wind_P', 'Disturbance_Wind_Y', 'Disturbance_Sensor_Noise', 'Disturbance_Payload']].drop_duplicates()
-            
-            lqr_rows = []
-            for _, row in configs.iterrows():
-                dist_cfg = {
-                    'wind_torque_p': row.get('Disturbance_Wind_P', 0.0),
-                    'wind_torque_y': row.get('Disturbance_Wind_Y', 0.0),
-                    'sensor_noise_std': row.get('Disturbance_Sensor_Noise', 0.0),
-                    'mass_payload': row.get('Disturbance_Payload', 1.0)
-                }
-                sp_pitch = row.get('Setpoint_Pitch', 0.5236)
-                sp_yaw = row.get('Setpoint_Yaw', 0.5236)
-                t_max = row.get('T_Max', 10.0)
-                
-                for baseline_name in missing_baselines:
-                    mode = 'mimo' if baseline_name == "MIMO LQR" else 'decentralized'
-                    m_pitch, m_yaw = simulate_lqr_for_metrics(sp_pitch, sp_yaw, t_max, dist_cfg, mode=mode)
-                    
-                    new_row = {col: row.get(col) for col in configs.columns}
-                    new_row['Algorithm'] = baseline_name
-                    new_row['Controller_Type'] = 'classic'
-                    new_row['GS_Method'] = 'None'
-                    new_row['Pitch_RiseTime'] = m_pitch.get('rise_time')
-                    new_row['Pitch_SettlingTime'] = m_pitch.get('settling_time')
-                    new_row['Pitch_Overshoot'] = m_pitch.get('overshoot')
-                    new_row['Pitch_SSE'] = m_pitch.get('steady_state_error')
-                    new_row['Pitch_CE'] = m_pitch.get('control_energy')
-                    new_row['Pitch_ITAE'] = m_pitch.get('itae')
-                    new_row['Yaw_RiseTime'] = m_yaw.get('rise_time')
-                    new_row['Yaw_SettlingTime'] = m_yaw.get('settling_time')
-                    new_row['Yaw_Overshoot'] = m_yaw.get('overshoot')
-                    new_row['Yaw_SSE'] = m_yaw.get('steady_state_error')
-                    new_row['Yaw_CE'] = m_yaw.get('control_energy')
-                    new_row['Yaw_ITAE'] = m_yaw.get('itae')
-                    
-                    lqr_rows.append(new_row)
-            
-            if lqr_rows:
-                df_lqr = pd.DataFrame(lqr_rows)
-                df_sum = pd.concat([df_sum, df_lqr], ignore_index=True)
-                save_csv_safe(df_sum, sum_path)
-        # ---------------------------------------------------
+        # We reuse df_rob from Pair 2 directly
+        df_sum = df_rob.copy()
         
         # Áp dụng bộ lọc
         if FILTER_ALGORITHMS:
             df_sum = df_sum[df_sum['Algorithm'].isin(FILTER_ALGORITHMS)]
         if FILTER_OBJECTIVES:
-            df_sum = df_sum[df_sum['Objective_Type'].isin(FILTER_OBJECTIVES)]
+            obj_col = 'Tuning_Objective' if 'Tuning_Objective' in df_sum.columns else 'Objective_Type'
+            df_sum = df_sum[df_sum[obj_col].isin(FILTER_OBJECTIVES)]
         if FILTER_PROFILES:
             df_sum = df_sum[df_sum['Tuning_Profile'].isin(FILTER_PROFILES)]
         if FILTER_CONTROLLER_TYPES and 'Controller_Type' in df_sum.columns:
             df_sum = df_sum[df_sum['Controller_Type'].isin(FILTER_CONTROLLER_TYPES)]
         
         if not df_sum.empty and AGGREGATION_METRIC in df_sum.columns:
-            # 1. Bar Chart So Sánh Kiến Trúc theo Aggregation Method (Chỉ vẽ 1 biểu đồ)
             has_seed = 'Seed' in df_sum.columns
-            df_agg_chart = df_sum.groupby(['Algorithm'])[AGGREGATION_METRIC].agg(['mean', 'max']).reset_index()
-            target_col_chart = 'mean' if AGGREGATION_METHOD == 'mean' else 'max'
+            metric_cols_sum = [col for col in df_sum.columns if "Pitch_" in col or "Yaw_" in col]
             
+            # Tiền xử lý: Gộp cấu hình (Configuration) lại bằng AGGREGATION_METHOD (VD: Lấy Max/Worst) cho mỗi (Algorithm, Seed)
+            if has_seed:
+                df_prep = df_sum.groupby(['Algorithm', 'Seed'], as_index=False)[metric_cols_sum].agg(AGGREGATION_METHOD)
+            else:
+                df_prep = df_sum.groupby(['Algorithm'], as_index=False)[metric_cols_sum].agg(AGGREGATION_METHOD)
+
+            # 1. Bar Chart So Sánh Kiến Trúc theo Aggregation Method
             fig, ax = plt.subplots(figsize=(10, 6))
             
-            # Using sns.barplot. If has_seed, we can just pass df_sum to get error bars
             if has_seed:
-                # With error bars (computed by seaborn directly on raw data)
-                # target_col_chart here implies we want the mean or max over profiles, but with seeds, 
-                # we should aggregate normally by seaborn (estimator='mean' or 'max')
-                import numpy as np
-                estimator = np.max if AGGREGATION_METHOD == 'max' else np.mean
-                bp = sns.barplot(data=df_sum, x="Algorithm", y=AGGREGATION_METRIC, hue="Algorithm", 
-                            estimator=estimator, errorbar=('ci', 95), capsize=0.1, ax=ax, dodge=False)
+                # Tính Mean giữa các Seed và vẽ khoảng tin cậy
+                bp = sns.barplot(data=df_prep, x="Algorithm", y=AGGREGATION_METRIC, hue="Algorithm", 
+                            estimator=np.mean, errorbar=('ci', 95), capsize=0.1, ax=ax, dodge=False)
             else:
-                bp = sns.barplot(data=df_agg_chart, x="Algorithm", y=target_col_chart, hue="Algorithm", dodge=False, ax=ax)
+                bp = sns.barplot(data=df_prep, x="Algorithm", y=AGGREGATION_METRIC, hue="Algorithm", dodge=False, ax=ax)
             
             # Apply distinctive hatches
             hatches = ['/', '\\', 'x', '.', '-', '+', 'O', '*']
@@ -515,13 +528,30 @@ def main():
             plt.close()
             
             # XUẤT TABLE CHO TẤT CẢ METRICS
-            metric_cols_sum = [col for col in df_sum.columns if "Pitch_" in col or "Yaw_" in col]
             if metric_cols_sum:
-                df_mean_all = df_sum.groupby('Algorithm')[metric_cols_sum].mean().add_suffix('_Mean')
-                df_max_all = df_sum.groupby('Algorithm')[metric_cols_sum].max().add_suffix('_Max')
-                df_table_out = pd.concat([df_mean_all, df_max_all], axis=1).reset_index()
+                df_mean_all = df_prep.groupby('Algorithm')[metric_cols_sum].mean()
+                df_std_all = df_prep.groupby('Algorithm')[metric_cols_sum].std() if has_seed else None
+                
+                df_combined = pd.DataFrame(index=df_mean_all.index)
+                for col in metric_cols_sum:
+                    if has_seed:
+                        def format_mean_std(m, s):
+                            if pd.isna(s) or s == 0.0:
+                                return f"{m:.4f}"
+                            return f"{m:.4f} ± {s:.4f}"
+                        df_combined[col] = [format_mean_std(m, s) for m, s in zip(df_mean_all[col], df_std_all[col])]
+                    else:
+                        df_combined[col] = df_mean_all[col]
+                
+                df_table_out = df_combined.reset_index()
                 save_csv_safe(df_table_out, os.path.join(TARGET_RUN_DIR, "table_architectures_aggregation.csv"))
-                save_latex_table_safe(df_table_out, os.path.join(TARGET_RUN_DIR, "table_architectures_aggregation.tex"))
+                
+                # For LaTeX, replace ' ± ' with ' \pm ' and wrap in math mode
+                df_tex_out = df_table_out.copy()
+                if has_seed:
+                    for col in metric_cols_sum:
+                        df_tex_out[col] = df_tex_out[col].apply(lambda x: "$" + x.replace(' ± ', ' \\pm ') + "$" if isinstance(x, str) and ' ± ' in x else x)
+                save_latex_table_safe(df_tex_out, os.path.join(TARGET_RUN_DIR, "table_architectures_aggregation.tex"))
             
             # 2. Scatter Plot Đánh Đổi (Trade-off) giữa Control Energy và Metric hiện tại
             # Chỉ vẽ nếu metric hiện tại không phải Control Energy
@@ -550,9 +580,92 @@ def main():
                 plt.savefig(os.path.join(TARGET_RUN_DIR, "chart_tradeoff.pdf"), bbox_inches='tight', dpi=300)
                 plt.close()
                 
-            print("Đã xuất Pair 3: Architectures & Trade-off (Chart + Table)")
+            save_csv_safe(df_sum, os.path.join(TARGET_RUN_DIR, "raw_filtered_architectures.csv"))
+            print(f"Đã xuất Pair 3: Architectures & Trade-off (Chart + Table) - Lấy từ {len(df_sum)} dòng dữ liệu")
             
+    # ---------------------------------------------------------
+    # PAIR 4: GAIN SCHEDULING COMPARISON
+    # ---------------------------------------------------------
+    gs_path = os.path.join(TARGET_RUN_DIR, "experiment_summary.csv")
+    if os.path.exists(gs_path):
+        df_gs = pd.read_csv(gs_path)
+        
+        # Áp dụng các bộ lọc NGOẠI TRỪ FILTER_GS_METHODS để có thể so sánh giữa các GS
+        if FILTER_ALGORITHMS:
+            df_gs = df_gs[df_gs['Algorithm'].isin(FILTER_ALGORITHMS)]
+        if FILTER_OBJECTIVES:
+            obj_col = 'Tuning_Objective' if 'Tuning_Objective' in df_gs.columns else 'Objective_Type'
+            df_gs = df_gs[df_gs[obj_col].isin(FILTER_OBJECTIVES)]
+        if FILTER_PROFILES:
+            df_gs = df_gs[df_gs['Tuning_Profile'].isin(FILTER_PROFILES)]
+        # Không dùng FILTER_CONTROLLER_TYPES ở đây để có thể so sánh toàn diện các kết hợp GS và Controller
+        
+        # CHỈ LẤY GWO ĐỂ SO SÁNH CÁC KIỂU GAIN SCHEDULING (theo yêu cầu)
+        df_gs = df_gs[df_gs['Algorithm'] == 'GWO']
+            
+        if not df_gs.empty and 'GS_Method' in df_gs.columns:
+            df_gs = df_gs.copy()
+            if 'Controller_Type' in df_gs.columns:
+                def get_gs_label(row):
+                    gs = str(row['GS_Method']).lower()
+                    if gs == 'none' or gs == 'nan':
+                        return 'W/ GS'
+                    return f"{row['Controller_Type']}\n+ {row['GS_Method']}"
+                df_gs['Controller_GS'] = df_gs.apply(get_gs_label, axis=1)
+                x_col = 'Controller_GS'
+            else:
+                x_col = 'GS_Method'
+                
+            metrics_to_plot = ['Pitch_ITAE', 'Yaw_ITAE']
+            actual_metrics = [m for m in metrics_to_plot if m in df_gs.columns]
+            
+            if actual_metrics:
+                # Xuất bảng số liệu cho biểu đồ Gain Scheduling Comparison (để dễ viết paper)
+                df_gs_summary = df_gs.groupby(x_col)[actual_metrics].mean().reset_index()
+                save_csv_safe(df_gs_summary, os.path.join(TARGET_RUN_DIR, "table_gs_comparison.csv"))
+                save_latex_table_safe(df_gs_summary, os.path.join(TARGET_RUN_DIR, "table_gs_comparison.tex"))
+                print(f"Đã xuất Pair 4: Bảng số liệu Gain Scheduling (table_gs_comparison.csv/.tex)")
+                
+                fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+                # Ensure axes is always a list/array even if actual_metrics length is 1
+                axes = np.atleast_1d(axes).flatten()
+                
+                for i, metric in enumerate(actual_metrics):
+                    ax = axes[i]
+                    sns.barplot(
+                        data=df_gs, 
+                        x=x_col, 
+                        y=metric, 
+                        hue=x_col, 
+                        estimator=np.mean, 
+                        errorbar=('ci', 95) if 'Seed' in df_gs.columns else None,
+                        capsize=0.1,
+                        ax=ax,
+                        legend=False
+                    )
+                    ax.set_title(f"GWO: {metric} across Architectures & GS Methods", fontsize=14, fontweight='bold')
+                    ax.set_ylabel(metric, fontsize=12)
+                    ax.set_xlabel("Controller Type & GS Method", fontsize=12)
+                    ax.tick_params(axis='x', labelsize=11)
+                    
+                    format_academic_plot(ax)
+                    
+                    # Apply distinctive hatches for GS Methods
+                    hatches = ['/', '\\', 'x', '.', '-', '+', 'O', '*']
+                    num_x_groups = df_gs[x_col].nunique()
+                    
+                    for j, patch in enumerate(ax.patches):
+                        if num_x_groups > 0:
+                            hatch = hatches[j % len(hatches)]
+                            patch.set_hatch(hatch)
+                        
+                plt.tight_layout()
+                plt.savefig(os.path.join(TARGET_RUN_DIR, "chart_gs_comparison.pdf"), bbox_inches='tight', dpi=300)
+                plt.close()
+                print(f"Đã xuất Pair 4: Gain Scheduling Comparison (chart_gs_comparison.pdf)")
+                
     print("--- HOÀN TẤT ---")
 
 if __name__ == "__main__":
+
     main()

@@ -1,3 +1,10 @@
+import os
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+
 import numpy as np
 import pyswarms as ps
 import optuna
@@ -35,32 +42,33 @@ class TuningOptimizers:
         time_history = []
         start_time = time.time()
         
-        def obj_func(swarm):
-            args_list = [(particle.tolist(), setpoint_pitch, setpoint_yaw, t_max, disturbance_config, gs_method, tuning_profile, objective_type, trajectory_type) for particle in swarm]
-            with ProcessPoolExecutor() as executor:
-                costs = list(executor.map(_eval_particle_helicopter, args_list))
-                
-            if progress_callback:
-                iteration_counter[0] += 1
-                progress_callback(iteration_counter[0] / max_iters * 100)
-            
-            time_history.append(time.time() - start_time)
-            return np.array(costs)
-            
         results_at_checkpoints = {}
         last_iter = 0
-        for target_iter in iters_list:
-            iters_to_run = target_iter - last_iter
-            if iters_to_run > 0:
-                best_cost, best_pos = optimizer.optimize(obj_func, iters=iters_to_run)
-                last_iter = target_iter
+        
+        with ProcessPoolExecutor(max_workers=4) as executor:
+            def obj_func(swarm):
+                args_list = [(particle.tolist(), setpoint_pitch, setpoint_yaw, t_max, disturbance_config, gs_method, tuning_profile, objective_type, trajectory_type) for particle in swarm]
+                costs = list(executor.map(_eval_particle_helicopter, args_list))
+                    
+                if progress_callback:
+                    iteration_counter[0] += 1
+                    progress_callback(iteration_counter[0] / max_iters * 100)
                 
-            results_at_checkpoints[target_iter] = {
-                "best_cost": float(best_cost),
-                "best_params": best_pos.tolist(),
-                "cost_history": [float(c) for c in optimizer.cost_history],
-                "time_history": [float(t) for t in time_history[:target_iter]]
-            }
+                time_history.append(time.time() - start_time)
+                return np.array(costs)
+                
+            for target_iter in iters_list:
+                iters_to_run = target_iter - last_iter
+                if iters_to_run > 0:
+                    best_cost, best_pos = optimizer.optimize(obj_func, iters=iters_to_run)
+                    last_iter = target_iter
+                    
+                results_at_checkpoints[target_iter] = {
+                    "best_cost": float(best_cost),
+                    "best_params": best_pos.tolist(),
+                    "cost_history": [float(c) for c in optimizer.cost_history],
+                    "time_history": [float(t) for t in time_history[:target_iter]]
+                }
             
         return results_at_checkpoints
 
@@ -223,14 +231,15 @@ class TuningOptimizers:
         results_at_checkpoints = {}
         
         start_time = time.time()
-        for generation in range(max_iters):
-            if progress_callback:
-                progress_callback(generation / max_iters * 100)
-                
-            args_list = [(p.tolist(), setpoint_pitch, setpoint_yaw, t_max, disturbance_config, gs_method, tuning_profile, objective_type, trajectory_type) for p in population]
-            with ProcessPoolExecutor() as executor:
+        
+        with ProcessPoolExecutor(max_workers=4) as executor:
+            for generation in range(max_iters):
+                if progress_callback:
+                    progress_callback(generation / max_iters * 100)
+                    
+                args_list = [(p.tolist(), setpoint_pitch, setpoint_yaw, t_max, disturbance_config, gs_method, tuning_profile, objective_type, trajectory_type) for p in population]
                 costs = list(executor.map(_eval_particle_helicopter, args_list))
-            costs = np.array(costs)
+                costs = np.array(costs)
             
             min_cost_idx = np.argmin(costs)
             if costs[min_cost_idx] < best_cost:

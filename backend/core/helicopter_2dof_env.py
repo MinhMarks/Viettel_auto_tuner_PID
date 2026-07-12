@@ -1,6 +1,14 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 
+def safe_float(v, default=0.0):
+    try:
+        if v == '':
+            return default
+        return float(v)
+    except (ValueError, TypeError):
+        return default
+
 class Helicopter2DOF:
     """
     2-DOF Helicopter Environment for Simulation.
@@ -33,13 +41,26 @@ class Helicopter2DOF:
 
         # Disturbances
         self.disturbance_config = disturbance_config or {}
-        self.wind_torque_p = self.disturbance_config.get("wind_torque_p", 0.0)
-        self.wind_torque_y = self.disturbance_config.get("wind_torque_y", 0.0)
-        self.sensor_noise_std = self.disturbance_config.get("sensor_noise_std", 0.0)
+        self.wind_torque_p = safe_float(self.disturbance_config.get("wind_torque_p", 0.0))
+        self.wind_torque_y = safe_float(self.disturbance_config.get("wind_torque_y", 0.0))
+        self.sensor_noise_std = safe_float(self.disturbance_config.get("sensor_noise_std", 0.0))
         
         # mass_payload alters the moment of inertia and mass
         # Assuming payload mass increases J proportionally
-        payload_ratio = self.disturbance_config.get("mass_payload", 0.0)
+        payload_ratio = safe_float(self.disturbance_config.get("mass_payload", 0.0))
+        self.J_p = self.J_p_base * (1.0 + payload_ratio)
+        self.J_y = self.J_y_base * (1.0 + payload_ratio)
+        self.m_lcm2 = self.m_lcm2_base * (1.0 + payload_ratio)
+
+    def set_disturbances(self, config):
+        """
+        Dynamically update disturbances during simulation.
+        """
+        self.wind_torque_p = safe_float(config.get("wind_torque_p", 0.0))
+        self.wind_torque_y = safe_float(config.get("wind_torque_y", 0.0))
+        self.sensor_noise_std = safe_float(config.get("sensor_noise_std", 0.0))
+        
+        payload_ratio = safe_float(config.get("mass_payload", 0.0))
         self.J_p = self.J_p_base * (1.0 + payload_ratio)
         self.J_y = self.J_y_base * (1.0 + payload_ratio)
         self.m_lcm2 = self.m_lcm2_base * (1.0 + payload_ratio)
